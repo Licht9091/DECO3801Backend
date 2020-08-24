@@ -1,25 +1,27 @@
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+from flask_cors import CORS, cross_origin
 from flask import Flask, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, LoginManager, logout_user, UserMixin
 from werkzeug.security import check_password_hash, generate_password_hash
+from helper import parse_config
+
+ENV_VARIABLES = parse_config()
 
 # Init the flask app
 app = Flask(__name__)
+cors = CORS(app)
 app.config["DEBUG"] = True
-app.secret_key = "fd$5tg(skj23jJl22"
-
-# Login manager
-login_manager = LoginManager()
-login_manager.init_app(app)
+app.config["CORS_HEADERS"] = 'Content-Type'
+app.secret_key = ENV_VARIABLES["APP_SECRET"]
 
 # Database set up stuff
 SQLALCHEMY_DATABASE_URI = "mysql+mysqlconnector://{username}:{password}@{hostname}/{databasename}".format(
-    username="PyLicht",
-    password="sJ2mnc#cdPz=24G",
-    hostname="PyLicht.mysql.pythonanywhere-services.com",
-    databasename="PyLicht$backend",
+    username=ENV_VARIABLES["DB_USERNAME"],
+    password=ENV_VARIABLES["DB_PASSWORD"],
+    hostname=ENV_VARIABLES["DB_HOSTNAME"],
+    databasename=ENV_VARIABLES["DB_NAME"],
 )
 app.config["SQLALCHEMY_DATABASE_URI"] = SQLALCHEMY_DATABASE_URI
 app.config["SQLALCHEMY_POOL_RECYCLE"] = 299
@@ -29,13 +31,12 @@ app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 migrate = Migrate(app, db)
 
-@login_manager.user_loader
-def load_user(name):
-    return User.query.filter_by(username=name).first()
+# Login manager
+login_manager = LoginManager()
+login_manager.init_app(app)
+login_manager.session_protection = "strong"
 
-# Classes and tables from the db are the same in SQLAlchemy, this is an example
-# of what a simple table would look like in python code. Note I didn't actually add
-# this table to the database yet though.
+# User table
 class User(UserMixin, db.Model):
     __tablename__ = "users"
 
@@ -47,7 +48,11 @@ class User(UserMixin, db.Model):
     bankAccount = db.relationship('BankAccount', foreign_keys=bankAccountId)
 
     def check_password(self, password):
-            return check_password_hash(self.password_hash, password)
+            return check_password_hash(self.passwordHash, password)
+
+    # This NEEDS to be implemented for login_user to work (God I nearly pulled my hair out debugging this one)
+    def get_id(self):
+        return self.username
 
 class BankAccount(db.Model):
     __tablename__ = "bankaccounts"
@@ -62,6 +67,10 @@ class Bank(db.Model):
 
     bsb = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255))
+
+@login_manager.user_loader
+def load_user(user):
+    return User.query.filter_by(username=user).first()
 
 # This is an example end point, here you can recieve or return GET/POST requests
 # You can also render html and pass it variables from here that can be usalised in
@@ -88,7 +97,18 @@ def login():
 
 # This logs you out if you are logged in.
 @app.route("/logout")
-@login_required
 def logout():
-    logout_user()
-    return 'Successfully logged out!'
+    if current_user.is_authenticated:
+        logout_user()
+        return 'Successfully logged out!'
+    else:
+        return 'No user was logged in.'
+
+@app.route("/testloggedin")
+def testloggedin():
+    if current_user.is_authenticated: return 'The user is logged in. ({})'.format(current_user.username)
+    else: return 'The user is not logged in.'
+
+@app.route("/whatever")
+def helloworld():
+    return '{"message": "Hello world"}'
