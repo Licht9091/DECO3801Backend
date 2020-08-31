@@ -1,11 +1,13 @@
 from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
+import numpy
 from flask_cors import CORS, cross_origin
 from flask import Flask, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, LoginManager, logout_user, UserMixin
 from werkzeug.security import check_password_hash, generate_password_hash
 from helper import parse_config
+
 
 ENV_VARIABLES = parse_config()
 
@@ -109,6 +111,157 @@ def testloggedin():
     if current_user.is_authenticated: return 'The user is logged in. ({})'.format(current_user.username)
     else: return 'The user is not logged in.'
 
-@app.route("/whatever")
-def helloworld():
-    return '{"message": "Hello world"}'
+
+import json
+import numpy as np
+import string
+import random
+import pandas as pd
+import datetime
+
+date_handler = lambda obj: (
+    obj.isoformat()
+    if isinstance(obj, (datetime.datetime, datetime.date))
+    else None
+)
+
+bank = pd.read_csv("/home/Benno/DECO3801Backend/Darrens_money.csv")
+
+bank["date"] = pd.to_datetime(bank["date"], format="%d/%m/%Y")
+bank = bank.sort_values('date')
+bank['money'] = bank['transaction'].cumsum()
+catagories = ['entertainment', 'groceries', 'bills', 'uncategorized']
+bank['category'] = bank['transaction'].apply(lambda x: catagories[np.random.randint(0,4)])
+df = bank.copy()
+
+@app.route("/get_transactions")
+def get_transactions():
+    all_trans = df
+    un = df[df['category']=='uncategorized']
+    un_income = un[un['transaction'] > 0]
+    un_expense = un[un['transaction'] < 0]
+
+    all_trans_list = []
+    for ix, row in all_trans.iterrows():
+        transaction = {
+            "id": ''.join(random.choice(string.ascii_lowercase) for x in range(10)),
+            "date": row['date'],
+            "description": row['description'],
+            "value": row['money'],
+            "category": row['category'],
+            #"Goal": goals[random.randint(0,9)],
+            #"Goal_contrabution":
+        }
+        all_trans_list.append(transaction)
+
+    income_trans_list = []
+    for ix, row in un_income.iterrows():
+        transaction = {
+            "id": ''.join(random.choice(string.ascii_lowercase) for x in range(10)),
+            "date": row['date'],
+            "description": row['description'],
+            "value": row['money'],
+            "category": row['category'],
+            "goal": row['goal'],
+            "Goal_contrabution": row['goal_contrabution']
+        }
+        income_trans_list.append(transaction)
+
+    expense_trans_list = []
+    for ix, row in un_expense.iterrows():
+        transaction = {
+            "id": ''.join(random.choice(string.ascii_lowercase) for x in range(10)),
+            "date": row['date'],
+            "description": row['description'],
+            "value": row['money'],
+            "category": row['category'],
+            "goal": row['goal'],
+            "Goal_contrabution": row['goal_contrabution']
+        }
+        expense_trans_list.append(transaction)
+    fin_dict = {
+        "all_transactions": all_trans_list,
+        "uncategorized_income": income_trans_list,
+        "uncategorized_expense": expense_trans_list
+    }
+    return json.dumps(fin_dict , indent=5, default=date_handler)
+
+
+
+
+@app.route("/transaction_stats")
+def transaction_stats():
+    total_money = df['money'].iloc[-1]
+
+    un = df[df['category']=='uncategorized']
+    un_total = un['transaction'].shape[0]
+    un_spending = un[un['transaction'] < 0]['transaction'].shape[0]
+    un_income = un[un['transaction'] > 0]['transaction'].shape[0]
+
+    spending = df[df['transaction'] < 0]['transaction'].sum()
+    income = df[df['transaction'] > 0]['transaction'].sum()
+
+    spending = {
+        "total": spending
+    }
+    for cat in df['category'].unique().tolist():
+        spend = df[df['category']==cat]['transaction'].sum()
+        spending[cat] = round(spend,2)
+
+    week_changes = list(df.groupby(pd.Grouper(key='date', freq='W-MON'))['transaction'].sum().reset_index().sort_values('date')['transaction'].values)
+    #print(df)
+    week_changes = [round(i, 2) for i in week_changes]
+
+
+    data_dict = {
+        "total-assets": np.random.randint(7000,9000),
+        "total-cash": round(total_money, 2),
+        "spending-amount": np.random.randint(300,3000),
+        "days-till-pay": np.random.randint(1, 14),
+        "uncategorised": {
+            "total": round(un_total, 2),
+            "income": round(un_income, 2),
+            "spending": round(un_spending,2)
+        },
+        "spending": spending,
+        "graphable-total-cash": week_changes #[100, 120, 140, 90]
+    }
+    return data_dict
+
+@app.route("/set_goal")
+def set_goal():
+    #Set a single goal
+    #db.session.add(variable_name)
+    #db.session.commit()
+    return 200
+
+@app.route("/goal_status")
+def goal_status():
+    #COMPLETELY RANDOM
+    data_dict = {
+        "goals": [
+            {
+                "name": "Rainy Day Fund",
+                "goal-value": 1000,
+                "current-contribution":np.random.randint(1000, 2000)
+            },
+            {
+                "name": "Overeas Trip",
+                "goal-value": 5000,
+                "current-contribution":np.random.randint(0, 5000)
+            },
+            {
+                "name": "Overeas Trip",
+                "goal-value": 2000,
+                "current-contribution":np.random.randint(0, 2000)
+            }]
+    }
+
+    result = json.dumps(data_dict, indent=5)
+
+    return result
+
+
+
+
+
