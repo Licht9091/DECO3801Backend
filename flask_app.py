@@ -70,6 +70,28 @@ class Bank(db.Model):
     bsb = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(255))
 
+class Transaction(db.Model):
+    __tablename__ = "transactions"
+    id = db.Column(db.Integer, primary_key=True)
+    userid = db.Column(db.Integer)
+    date = db.Column(db.DateTime)
+    description = db.Column(db.String(255))
+    value = db.Column(db.Float)
+    category = db.Column(db.String(255))
+    goal = db.Column(db.Integer, primary_key=True)
+    goalContrabution = db.Column(db.Float)
+
+
+class Goal(db.Model):
+    __tablename__ = "goals"
+    id = db.Column(db.Integer, primary_key=True)
+    userid = db.Column(db.Integer)
+    goalStartDate = db.Column(db.DateTime)
+    goalEndDate = db.Column(db.DateTime)
+    goalAmount = db.Column(db.Integer)
+    totalContrabution = db.Column(db.Float)
+
+
 @login_manager.user_loader
 def load_user(user):
     return User.query.filter_by(username=user).first()
