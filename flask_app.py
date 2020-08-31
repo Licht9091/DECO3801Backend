@@ -73,23 +73,25 @@ class Bank(db.Model):
 class Transaction(db.Model):
     __tablename__ = "transactions"
     id = db.Column(db.Integer, primary_key=True)
-    userid = db.Column(db.Integer)
+    userId = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user = db.relationship('User', foreign_keys=userId)
     date = db.Column(db.DateTime)
     description = db.Column(db.String(255))
     value = db.Column(db.Float)
     category = db.Column(db.String(255))
-    goal = db.Column(db.Integer, primary_key=True)
-    goalContrabution = db.Column(db.Float)
+    goalId = db.Column(db.Integer, db.ForeignKey('goals.id'), nullable=True)
+    goal = db.relationship('Goal', foreign_keys=goalId)
 
 
 class Goal(db.Model):
     __tablename__ = "goals"
     id = db.Column(db.Integer, primary_key=True)
-    userid = db.Column(db.Integer)
+    userId = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    user = db.relationship('User', foreign_keys=userId)
     goalStartDate = db.Column(db.DateTime)
     goalEndDate = db.Column(db.DateTime)
     goalAmount = db.Column(db.Integer)
-    totalContrabution = db.Column(db.Float)
+    totalContribution = db.Column(db.Float)
 
 
 @login_manager.user_loader
@@ -140,6 +142,7 @@ import string
 import random
 import pandas as pd
 import datetime
+import os
 
 date_handler = lambda obj: (
     obj.isoformat()
@@ -147,7 +150,7 @@ date_handler = lambda obj: (
     else None
 )
 
-bank = pd.read_csv("/home/Benno/DECO3801Backend/Darrens_money.csv")
+bank = pd.read_csv(os.path.dirname(os.path.abspath(__file__)) + "/Darrens_money.csv")
 
 bank["date"] = pd.to_datetime(bank["date"], format="%d/%m/%Y")
 bank = bank.sort_values('date')
