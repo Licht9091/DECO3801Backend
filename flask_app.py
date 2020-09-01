@@ -171,8 +171,6 @@ def get_transactions():
             "description": row['description'],
             "value": row['money'],
             "category": row['category'],
-            #"Goal": goals[random.randint(0,9)],
-            #"Goal_contrabution":
         }
         all_trans_list.append(transaction)
 
