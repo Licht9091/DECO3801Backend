@@ -75,7 +75,6 @@ class Transaction(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     userId = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     user = db.relationship('User', foreign_keys=userId)
-
     date = db.Column(db.DateTime)
     description = db.Column(db.String(255))
     value = db.Column(db.Float)
@@ -93,10 +92,6 @@ class Goal(db.Model):
     goalEndDate = db.Column(db.DateTime)
     goalAmount = db.Column(db.Integer)
     totalContribution = db.Column(db.Float)
-    description = db.Column(db.String(255))
-
-
-
 
 
 @login_manager.user_loader
@@ -157,8 +152,10 @@ date_handler = lambda obj: (
 )
 
 
+
 """
 #THIS GETS DATA FROM CSV FOR OLD CODE
+
 bank = pd.read_csv(os.path.dirname(os.path.abspath(__file__)) + "/Darrens_money.csv")
 
 bank["date"] = pd.to_datetime(bank["date"], format="%d/%m/%Y")

@@ -1,6 +1,9 @@
+import os
+
 def parse_config():
      # Load config variables
-    with open("/home/Benno/DECO3801Backend/config.txt", "r") as fl:
+#    with open("/home/Benno/DECO3801Backend/config.txt", "r") as fl:
+    with open(os.path.dirname(os.path.abspath(__file__)) + "/CONFIG.txt", "r") as fl:
         data = fl.read()
         data = data.split("\n")
         data = [i.split("=") for i in data]
