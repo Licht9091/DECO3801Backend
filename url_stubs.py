@@ -171,10 +171,6 @@ def transaction_stats():
     }
     return data_dict
 
-
-transaction_stats()
-
-
 #https://benno.pythonanywhere.com/set_goal?description=HOLIDAY&goalAmount=3000&endDate=01-01-2025
 @app.route("/set_goal")
 def set_goal():

@@ -11,7 +11,7 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(255))
     passwordHash = db.Column(db.String(255))
     registerDate = db.Column(db.DateTime, default=datetime.now)
-    bankAccountId = db.Column(db.Integer, db.ForeignKey('bankaccounts.accountNumber'), nullable=True)
+    bankAccountId = db.Column(db.Integer, db.ForeignKey('bankaccounts.accountNumber', ondelete='SET NULL'), nullable=True)
     bankAccount = db.relationship('BankAccount', foreign_keys=bankAccountId)
 
     def check_password(self, password):
@@ -25,7 +25,7 @@ class BankAccount(db.Model):
     __tablename__ = "bankaccounts"
 
     accountNumber = db.Column(db.Integer, primary_key=True)
-    bankId = db.Column(db.Integer, db.ForeignKey('banks.bsb'))
+    bankId = db.Column(db.Integer, db.ForeignKey('banks.bsb', ondelete='SET NULL'))
     accountName = db.Column(db.String(255))
     bank = db.relationship('Bank', foreign_keys=bankId)
 
@@ -37,6 +37,7 @@ class Bank(db.Model):
 
 class Transaction(db.Model):
     __tablename__ = "transactions"
+
     id = db.Column(db.Integer, primary_key=True)
     userId = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
     user = db.relationship('User', foreign_keys=userId)
@@ -44,16 +45,24 @@ class Transaction(db.Model):
     description = db.Column(db.String(255))
     value = db.Column(db.Float)
     category = db.Column(db.String(255))
-    goalId = db.Column(db.Integer, db.ForeignKey('goals.id'), nullable=True)
+    goalId = db.Column(db.Integer, db.ForeignKey('goals.id', ondelete='SET NULL'), nullable=True)
     goal = db.relationship('Goal', foreign_keys=goalId)
 
 
 class Goal(db.Model):
     __tablename__ = "goals"
+
     id = db.Column(db.Integer, primary_key=True)
-    userId = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    userId = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     user = db.relationship('User', foreign_keys=userId)
     goalStartDate = db.Column(db.DateTime)
     goalEndDate = db.Column(db.DateTime)
-    goalAmount = db.Column(db.Integer)
+    goalAmount = db.Column(db.Float)
     totalContribution = db.Column(db.Float)
+    description = db.Column(db.String(255))
+
+class Category(db.Model):
+    _tablename_ = "categories"
+
+    id = db.Column(db.Integer, primary_key=True)
+    catagoryName = db.Column(db.String(255))
