@@ -39,7 +39,7 @@ class Transaction(db.Model):
     __tablename__ = "transactions"
 
     id = db.Column(db.Integer, primary_key=True)
-    userId = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    userId = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
     user = db.relationship('User', foreign_keys=userId)
     date = db.Column(db.DateTime)
     description = db.Column(db.String(255))

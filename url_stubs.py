@@ -13,9 +13,10 @@ def hello_world():
     return 'Hello from Flask!'
 
 # Login endpoint
-@app.route("/login")#, methods=["POST"])
+@app.route("/login", methods=["POST"])
 def login():
-    #if request.method == "GET": return ''
+    if request.method == "GET": return ''
+    if current_user.is_authenticated: return 'Successfully logged in!'
 
     user = load_user(request.form["username"])
     if user is None: return 'User does not exist'
@@ -27,6 +28,7 @@ def login():
 
 # This logs you out if you are logged in.
 @app.route("/logout")
+@login_required
 def logout():
     if current_user.is_authenticated:
         logout_user()
@@ -62,8 +64,11 @@ def hash_string(s):
 
 #current_user.id
 @app.route("/get_transactions")
+@login_required
 def get_transactions():
-    userid = hash_string("Darren_test")#current_user.id
+    userid = current_user.id
+    #userid = hash_string("test") # Use this when testing
+
     query = Transaction.query.filter_by(userId=userid)
     df = pd.read_sql(query.statement, query.session.bind)
 
@@ -118,8 +123,10 @@ def get_transactions():
 
 
 @app.route("/transaction_stats")
+@login_required
 def transaction_stats():
-    userid = hash_string("Darren_test")#current_user.id
+    userid = current_user.id
+    #userid = hash_string("test") # Use this when testing
 
     query = Transaction.query.filter_by(userId=userid)
     df = pd.read_sql(query.statement, query.session.bind)
@@ -173,8 +180,10 @@ def transaction_stats():
 
 #https://benno.pythonanywhere.com/set_goal?description=HOLIDAY&goalAmount=3000&endDate=01-01-2025
 @app.route("/set_goal")
+@login_required
 def set_goal():
-    userid = hash_string("Darren_goal_test_2")
+    userid = current_user.id
+    #userid = hash_string("test") # Use this when testing
 
     goal_text = request.args.get('description', type = str)
     goalAmount = request.args.get('goalAmount', type = int)
@@ -190,14 +199,32 @@ def set_goal():
         goal = Goal(id=goalid , userId=userid, description=goal_text, goalAmount=goalAmount, totalContribution=0, goalStartDate=datetime.datetime.now(), goalEndDate=endDate)
         db.session.add(goal)
         db.session.commit()
-        return json.dumps({"success": 200}, indent=5)
+        return json.dumps({"success": 200, "id": goalid}, indent=5)
     except:
         return json.dumps({"success": 400}, indent=5)
 
+@app.route("/delete_goal")
+@login_required
+def delete_goal():
+    userid = current_user.id
+    #userid = hash_string("test") # Use this when testing
+
+    goalId = request.args.get('id', type = str)
+    goal = Goal.query.filter_by(id=goalId).first()
+
+    if (goal == None): return '{"message": "Goal was not found"}'
+    db.session.delete(goal)
+    db.session.commit()
+
+    return '{"message": "Success"}'
+
 #https://benno.pythonanywhere.com/goal_status?userid=33103738
 @app.route("/goal_status")
+@login_required
 def goal_status():
-    userid = hash_string("Darren_goal_test_2")
+    userid = current_user.id
+    #userid = hash_string("test") # Use this when testing
+
     try:
         query = Goal.query.filter_by(userId=userid).all()
         #
@@ -235,8 +262,10 @@ def goal_status():
 
 #https://benno.pythonanywhere.com/contribute_to_goal?goalid=12493741&contrabution=62.3
 @app.route("/contribute_to_goal")
+@login_required
 def contribute_to_goal():
-    userid = hash_string("Darren_goal_test_2")
+    userid = current_user.id
+    #userid = hash_string("test") # Use this when testing
 
     goalid = request.args.get('goalid', type = int)
     contrabution = request.args.get('contrabution', type = float)
@@ -253,15 +282,8 @@ def contribute_to_goal():
     except:
         return json.dumps({"status": 400}, indent=5)
 
-#Goal.query.delete()
-#contribute_to_goal()
-
-#userid = hash_string("Darren_goal_test_2")
-#user =  User(id = userid, username="Darren_goal_test_2")
-#db.session.add(user)
-#db.session.commit()
-
 @app.route("/get_catagories")
+@login_required
 def get_catagories():
     d = {
         "catagories": ['entertainment', 'groceries', 'bills', 'uncategorized']
@@ -274,8 +296,10 @@ def set_catagories():
 
 #https://benno.pythonanywhere.com/categorize_transaction?transactionid=1&category=entertainment
 @app.route("/categorize_transaction")
+@login_required
 def categorize_transaction():
-    userid = hash_string("Darren_goal_test_2")
+    userid = current_user.id
+    #userid = hash_string("test") # Use this when testing
 
     transid = request.args.get('transactionid', type = int)
     newCat = request.args.get('category', type = str)
@@ -292,12 +316,11 @@ def categorize_transaction():
     except:
         return json.dumps({"status": 400}, indent=5)
 
-
-#categorize_transaction()
-
 @app.route("/allocate_transaction")
+@login_required
 def allocate_transaction():
-    userid = hash_string("Darren_goal_test_2")
+    userid = current_user.id
+    #userid = hash_string("test") # Use this when testing
     """
     transid = request.args.get('transactionid', type = int)
     newCat = request.args.get('category', type = int)
