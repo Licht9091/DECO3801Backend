@@ -18,10 +18,8 @@ app.config["DEBUG"] = True
 app.config["CORS_HEADERS"] = 'Content-Type'
 app.secret_key = ENV_VARIABLES["APP_SECRET"]
 
-print (ENV_VARIABLES["DB_USERNAME"], ENV_VARIABLES["DB_PASSWORD"], ENV_VARIABLES["DB_HOSTNAME"], ENV_VARIABLES["DB_NAME"])
-
 # Database set up stuff
-SQLALCHEMY_DATABASE_URI = "mysql+mysqlconnector://{username}:{password}@{hostname}/{databasename}".format(
+SQLALCHEMY_DATABASE_URI = "mysql+mysqlconnector://{username}:{password}@{hostname}:3306/{databasename}".format(
     username=ENV_VARIABLES["DB_USERNAME"],
     password=ENV_VARIABLES["DB_PASSWORD"],
     hostname=ENV_VARIABLES["DB_HOSTNAME"],

@@ -1,5 +1,0 @@
-APP_SECRET=fd$5tg(skj23jJl22
-DB_USERNAME=PyLicht
-DB_PASSWORD=sjj29sNc829mcS
-DB_HOSTNAME=PyLicht.mysql.pythonanywhere-services.com
-DB_NAME=PyLicht$backend
