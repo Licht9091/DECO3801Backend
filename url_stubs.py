@@ -162,6 +162,8 @@ def transaction_stats():
     #print(df)
     week_changes = [round(i, 2) for i in week_changes]
 
+    allCategories = [i.catagoryName for i in Category.query.all()]
+
     data_dict = {
         "total-assets": np.random.randint(7000,9000),
         "total-cash": round(total_money, 2),
@@ -174,6 +176,7 @@ def transaction_stats():
         },
         "spending": spending,
         "recent-spending": recentSpending,
+        "all-categories": allCategories,
         "graphable-total-cash": week_changes #[100, 120, 140, 90]
     }
     return data_dict
@@ -282,17 +285,19 @@ def contribute_to_goal():
     except:
         return json.dumps({"status": 400}, indent=5)
 
-@app.route("/get_catagories")
+@app.route("/add_category")
 @login_required
-def get_catagories():
-    d = {
-        "catagories": ['entertainment', 'groceries', 'bills', 'uncategorized']
-        }
-    return json.dumps(d, indent=5)
+def add_category():
+    cName = request.args.get('category', type = str)
+    exists = Category.query.filer_by(catagoryName=cName)
 
-@app.route("/set_catagories")
-def set_catagories():
-    return json.dumps({"status": "NOT IMPLEMENTED YET"}, indent=5)
+    if (exists != None): return '{"message": "Already exists"}'
+
+    c = Category(catagoryName=cName)
+    db.session.add(c)
+    db.session.commit()
+
+    return '{"message": "Success"}'
 
 #https://benno.pythonanywhere.com/categorize_transaction?transactionid=1&category=entertainment
 @app.route("/categorize_transaction")
@@ -303,8 +308,6 @@ def categorize_transaction():
 
     transid = request.args.get('transactionid', type = int)
     newCat = request.args.get('category', type = str)
-    #transid = 1
-    #newCat = "entertainment"
 
     try:
         #trans = Transaction.query.filter_by(id=transid, userId=userid).first()
