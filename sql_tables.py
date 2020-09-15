@@ -66,3 +66,13 @@ class Category(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     catagoryName = db.Column(db.String(255))
+
+class TransactionCategories(db.Model):
+    _tablename_ = "transactioncategories"
+
+    id = db.Column(db.Integer, primary_key=True)
+    transactionId = db.Column(db.Integer, db.ForeignKey('transactions.id', ondelete='SET NULL'), nullable=True)
+    transaction = db.relationship('Transaction', foreign_keys=transactionId)
+    goalId = db.Column(db.Integer, db.ForeignKey('goals.id', ondelete='SET NULL'), nullable=True)
+    goal = db.relationship('Goal', foreign_keys=goalId)
+    ammount = db.Column(db.Float)
