@@ -282,7 +282,7 @@ def contribute_to_goal():
 
     try:
         query = Goal.query.filter_by(id=goalid, userId=userid).all()
-        goal = Goal.query.get(goalid )
+        goal = Goal.query.get(goalid)
         #print(goal.totalContribution)
         goal.totalContribution = goal.totalContribution + contrabution
         db.session.commit()
