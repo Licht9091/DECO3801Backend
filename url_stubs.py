@@ -60,19 +60,21 @@ date_handler = lambda obj: (
 def hash_string(s):
     return round(int(hashlib.md5(str.encode(s)).hexdigest(),16)/10000000000000000000000000000000)
 
-#userid aint working.
 
 #current_user.id
 @app.route("/get_transactions")
-@login_required
+#@login_required
 def get_transactions():
-    userid = current_user.id
+    #userid = current_user.id
     #userid = hash_string("test") # Use this when testing
+    user = load_user("test")
+    login_user(user)
+    userid = current_user.id
 
     query = Transaction.query.filter_by(userId=userid)
     df = pd.read_sql(query.statement, query.session.bind)
 
-    print("SQLDB\n", df.head())
+    #print("SQLDB\n", df.head())
     #print("\n", all_trans.columns)
 
     un = df[df['category']=='uncategorized']
@@ -120,7 +122,7 @@ def get_transactions():
         "uncategorized_expense": expense_trans_list
     }
     return json.dumps(fin_dict , indent=5, default=date_handler)
-
+#get_transactions()
 
 @app.route("/transaction_stats")
 @login_required
@@ -225,6 +227,10 @@ def delete_goal():
 @app.route("/goal_status")
 @login_required
 def goal_status():
+    #userid = current_user.id
+
+    user = load_user("test")
+    login_user(user)
     userid = current_user.id
     #userid = hash_string("test") # Use this when testing
 
@@ -322,7 +328,20 @@ def categorize_transaction():
 @app.route("/allocate_transaction")
 @login_required
 def allocate_transaction():
-    userid = current_user.id
+    #userid = current_user.id
+
+    transid = 1
+    []
+
+    transid = None
+    goals_arr = [] #arr of tuples
+
+    #set transaction catagory as income
+
+    for contrabution in goals_arr:
+        #add to the transaction catagory each tuple
+        pass
+
     #userid = hash_string("test") # Use this when testing
     """
     transid = request.args.get('transactionid', type = int)

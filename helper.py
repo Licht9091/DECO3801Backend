@@ -8,8 +8,9 @@ def parse_config():
         data = [i.split("=") for i in data]
 
         ENV_VARIABLES = {}
-
+        #if (i[0] == ''): continue
         for i in data:
+            if (i[0] == ''): continue
             ENV_VARIABLES[i[0]] = i[1]
 
     return ENV_VARIABLES
