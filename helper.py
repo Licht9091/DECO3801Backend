@@ -10,6 +10,7 @@ def parse_config():
         ENV_VARIABLES = {}
 
         for i in data:
+            if (i[0] == ''): continue
             ENV_VARIABLES[i[0]] = i[1]
 
     return ENV_VARIABLES
