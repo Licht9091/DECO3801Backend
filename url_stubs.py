@@ -325,31 +325,28 @@ def categorize_transaction():
     except:
         return json.dumps({"status": 400}, indent=5)
 
-@app.route("/allocate_transaction")
+@app.route("/allocate_transaction", methods=["POST"])
 @login_required
 def allocate_transaction():
-    #userid = current_user.id
+    #user = load_user("test")
+    #login_user(user)
+    userid = current_user.id
 
-    transid = 1
-    []
+    r = request.json
 
-    transid = None
-    goals_arr = [] #arr of tuples
+    transid = r['transid']
+    goals_arr = r['goals_arr']
 
-    #set transaction catagory as income
 
-    for contrabution in goals_arr:
+    try:
+        for contrabution in goals_arr:
         #add to the transaction catagory each tuple
-        pass
-
-    #userid = hash_string("test") # Use this when testing
-    """
-    transid = request.args.get('transactionid', type = int)
-    newCat = request.args.get('category', type = int)
-
-    query = Transaction.query.filter_by(id=transid, userId=userid).all()
-    trans = Transaction.query.get(transid)
-    #print(goal.totalContribution)
-    trans.category = newCat
-    db.session.commit()
-    """
+            print(contrabution[0], contrabution[1])
+            if type(contrabution[0]) != int or type(contrabution[1]) != float:
+                return json.dumps({"status": "Bad Request"}, indent=5)
+            tcat = TransactionCategories(transactionId=transid, goalId=contrabution[0], ammount=contrabution[1])
+            db.session.add(tcat)
+        db.session.commit()
+        return json.dumps({"status": 200}, indent=5)
+    except:
+        return json.dumps({"status": 400}, indent=5)
