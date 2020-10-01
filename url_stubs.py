@@ -65,11 +65,13 @@ def hash_string(s):
 @app.route("/get_transactions")
 #@login_required
 def get_transactions():
-    #userid = current_user.id
-    #userid = hash_string("test") # Use this when testing
-    user = load_user("test")
-    login_user(user)
     userid = current_user.id
+    
+    #userid = hash_string("test") # Use this when testing
+    
+    #user = load_user("test")
+    #login_user(user)
+    #userid = current_user.id
 
     query = Transaction.query.filter_by(userId=userid)
     df = pd.read_sql(query.statement, query.session.bind)
