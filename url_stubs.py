@@ -225,19 +225,24 @@ def delete_goal():
 
 #https://benno.pythonanywhere.com/goal_status?userid=33103738
 @app.route("/goal_status")
-@login_required
+#@login_required
 def goal_status():
-    #userid = current_user.id
-
-    user = load_user("test")
-    login_user(user)
     userid = current_user.id
-    #userid = hash_string("test") # Use this when testing
+
+    #user = load_user("test")
+    #login_user(user)
+    #userid = current_user.id
 
     try:
         query = Goal.query.filter_by(userId=userid).all()
-        #
-        #DO THE GOAL STRING
+        TransCats = TransactionCategories.query
+        df = pd.read_sql(TransCats.statement, TransCats.session.bind)
+        #print(df)
+        grouped = df.groupby('goalId')
+        
+        goalSums = {}
+        for name, group in grouped:
+            goalSums[name] = group['ammount'].sum()
 
         arr = []
         for g in query:
@@ -249,13 +254,14 @@ def goal_status():
                 eDate = g.goalEndDate.strftime("%d-%m-%Y")
             else:
                 eDate = None
-            d = {
+            
+            d = { 
                     "description": g.description,
                     "id": g.id,
                     "startDate": sDate,
                     "endDate": eDate,
                     "goal-value": g.goalAmount,
-                    "current-contribution": g.totalContribution
+                    "current-contribution": goalSums.get(g.id, 0)#g.totalContribution
                 }
             arr.append(d)
 
@@ -269,10 +275,13 @@ def goal_status():
     except Exception as e:
         return json.dumps({"success": 400, "error":str(e)}, indent=5)
 
+#goal_status()
+
 #https://benno.pythonanywhere.com/contribute_to_goal?goalid=12493741&contrabution=62.3
 @app.route("/contribute_to_goal")
 @login_required
 def contribute_to_goal():
+    #MAYBE INSTEAD ADD A FAKE CATAGORY THAT THIS IS GOING OT AND ADD IT TO CAT TRANS
     userid = current_user.id
     #userid = hash_string("test") # Use this when testing
 
@@ -336,7 +345,6 @@ def allocate_transaction():
 
     transid = r['transid']
     goals_arr = r['goals_arr']
-
 
     try:
         for contrabution in goals_arr:
