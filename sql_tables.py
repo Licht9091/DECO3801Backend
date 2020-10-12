@@ -76,3 +76,13 @@ class TransactionCategories(db.Model):
     goalId = db.Column(db.Integer, db.ForeignKey('goals.id', ondelete='SET NULL'), nullable=True)
     goal = db.relationship('Goal', foreign_keys=goalId)
     ammount = db.Column(db.Float)
+
+class BudgetItems(db.Model):
+    _tablename_ = "budgetitems"
+
+    id = db.Column(db.Integer, primary_key=True)
+    userId = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True)
+    user = db.relationship('User', foreign_keys=userId)
+    name = db.Column(db.String(255))
+    ammount = db.Column(db.Float)
+    tag = db.Column(db.String(255))
