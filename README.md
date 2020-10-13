@@ -14,8 +14,9 @@ The server will connect to an AWS that holds the database and all user informati
 4. Open CONFIG.txt and enter the credentials that the code requires. (Contact developers for this information.)
 
 Run the following commands (Linux):
-pip install -r requirements.txt
-export FLASK_APP="flask_app.py"
-flask run --host=0.0.0.0
+
+1. pip install -r requirements.txt
+2. export FLASK_APP="flask_app.py"
+3. flask run --host=0.0.0.0
 
 The server should now be running on local host and the front end code should now be able to access this backend on local host.
