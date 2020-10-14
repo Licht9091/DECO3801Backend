@@ -203,7 +203,7 @@ def set_goal():
     goalid = hash_string(goal_text)
 
     try:
-        goal = Goal(id=goalid , userId=userid, description=goal_text, goalAmount=goalAmount, totalContribution=0, goalStartDate=datetime.datetime.now(), goalEndDate=endDate)
+        goal = Goal(id=goalid , userId=userid, description=goal_text, goalAmount=goalAmount, totalContribution=0, goalStartDate=datetime.datetime.now(), goalEndDate=endDate, fortnightlyContribution=100.0)
         db.session.add(goal)
         db.session.commit()
         return json.dumps({"success": 200, "id": goalid}, indent=5)
@@ -263,6 +263,7 @@ def goal_status():
                     "startDate": sDate,
                     "endDate": eDate,
                     "goal-value": g.goalAmount,
+                    "fortnightly-contribution": g.fortnightlyContribution,
                     "current-contribution": goalSums.get(g.id, 0)#g.totalContribution
                 }
             arr.append(d)

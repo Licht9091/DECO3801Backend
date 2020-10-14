@@ -59,7 +59,8 @@ class Goal(db.Model):
     goalEndDate = db.Column(db.DateTime)
     goalAmount = db.Column(db.Float)
     totalContribution = db.Column(db.Float)
-    description = db.Column(db.String(255))
+    fortnightlyContribution = db.Column(db.Float)
+    description = db.Column(db.String(255), default=0.0)
 
 class Category(db.Model):
     _tablename_ = "categories"
