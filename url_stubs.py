@@ -193,20 +193,21 @@ def set_goal():
     #userid = hash_string("test") # Use this when testing
 
     goal_text = request.args.get('description', type = str)
-    goalAmount = request.args.get('goalAmount', type = int)
+    goalAmount = request.args.get('goalAmount', type = float)
+    fortnightlyGoal = request.args.get('fortnightlyGoal', type = float)
     try:
         endDate = request.args.get('endDate', type = str)
         endDate = datetime.datetime.strptime(endDate, '%d-%m-%Y')
     except:
-        endDate = datetime.datetime.strptime("1-01-2030", '%d-%m-%Y')
+        endDate = None
 
-    goalid = hash_string(goal_text)
-
+    goalId = hash_string(goal_text)
     try:
-        goal = Goal(id=goalid , userId=userid, description=goal_text, goalAmount=goalAmount, totalContribution=0, goalStartDate=datetime.datetime.now(), goalEndDate=endDate, fortnightlyContribution=100.0)
+        goal = Goal(id=goalId, userId=userid, description=goal_text, goalAmount=goalAmount, totalContribution=0, goalStartDate=datetime.datetime.now(), goalEndDate=endDate, fortnightlyContribution=fortnightlyGoal)
         db.session.add(goal)
         db.session.commit()
-        return json.dumps({"success": 200, "id": goalid}, indent=5)
+        print (goal.id)
+        return json.dumps({"success": 200, "id": goal.id}, indent=5)
     except:
         return json.dumps({"success": 400}, indent=5)
 
