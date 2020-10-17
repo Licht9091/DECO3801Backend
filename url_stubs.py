@@ -61,17 +61,10 @@ def hash_string(s):
     return round(int(hashlib.md5(str.encode(s)).hexdigest(),16)/10000000000000000000000000000000)
 
 
-#current_user.id
 @app.route("/get_transactions")
-#@login_required
+@login_required
 def get_transactions():
     userid = current_user.id
-    
-    #userid = hash_string("test") # Use this when testing
-    
-    #user = load_user("test")
-    #login_user(user)
-    #userid = current_user.id
 
     query = Transaction.query.filter_by(userId=userid)
     df = pd.read_sql(query.statement, query.session.bind)
@@ -185,7 +178,7 @@ def transaction_stats():
     }
     return data_dict
 
-#https://benno.pythonanywhere.com/set_goal?description=HOLIDAY&goalAmount=3000&endDate=01-01-2025
+#/set_goal?description=HOLIDAY&goalAmount=3000&endDate=01-01-2025
 @app.route("/set_goal")
 @login_required
 def set_goal():
@@ -226,7 +219,7 @@ def delete_goal():
 
     return '{"message": "Success"}'
 
-#https://benno.pythonanywhere.com/goal_status?userid=33103738
+#/goal_status?userid=33103738
 @app.route("/goal_status")
 #@login_required
 def goal_status():
@@ -281,7 +274,7 @@ def goal_status():
 
 #goal_status()
 
-#https://benno.pythonanywhere.com/contribute_to_goal?goalid=12493741&contrabution=62.3
+#/contribute_to_goal?goalid=12493741&contrabution=62.3
 @app.route("/contribute_to_goal")
 @login_required
 def contribute_to_goal():
@@ -318,7 +311,7 @@ def add_category():
 
     return '{"message": "Success"}'
 
-#https://benno.pythonanywhere.com/categorize_transaction?transactionid=1&category=entertainment
+#/categorize_transaction?transactionid=1&category=entertainment
 @app.route("/categorize_transaction")
 @login_required
 def categorize_transaction():
@@ -362,3 +355,94 @@ def allocate_transaction():
         return json.dumps({"status": 200}, indent=5)
     except:
         return json.dumps({"status": 400}, indent=5)
+
+
+#/get_budget
+@app.route("/get_budget")
+@login_required
+def get_budget():
+    userid = current_user.id
+
+    #user = load_user("test")
+    #login_user(user)
+    #userid = current_user.id
+
+    query = BudgetItems.query.filter_by(userId=userid)
+    df = pd.read_sql(query.statement, query.session.bind)
+
+    all_budgets_list = []
+    for ix, row in df.iterrows():
+        budget = {
+            "id": row['id'],
+            "name": row['name'],
+            "fortnightlyAmount": row['ammount'],
+            "tag": row['tag']
+        }
+        all_budgets_list.append(budget)
+
+    fin_dict = {
+        "all_budgets": all_budgets_list
+    }
+    return json.dumps(fin_dict , indent=5, default=date_handler)
+
+#/add_budget?name=food&fortAmount=100&tag=yes
+@app.route("/add_budget")
+@login_required
+def add_budget():
+    userid = current_user.id
+
+    try:
+        name = request.args.get('name', type = str)
+        fortAmount = request.args.get('fortAmount', type = int)
+        tag = request.args.get('tag', type = str)
+
+        budgetid = hash_string(name+str(userid))
+    except:
+        return json.dumps({"success": "Failure due to incorrect inputs"}, indent=5)
+
+    try:
+        budget = BudgetItems(id=budgetid, 
+                    userId=userid, 
+                    name=name,
+                    ammount=fortAmount,
+                    tag=tag)
+        db.session.add(budget)
+        db.session.commit()
+        return json.dumps({"success": 200, "id": budgetid}, indent=5)
+    except:
+        return json.dumps({"success": 400}, indent=5)
+
+#/del_budget?id=8195146
+@app.route("/del_budget")
+@login_required
+def del_budget():
+    userid = current_user.id
+
+    budgetId = request.args.get('id', type = str)
+    budget = BudgetItems.query.filter_by(id=budgetId).first()
+
+    if (budget == None): return '{"message": "Budget was not found"}'
+    db.session.delete(budget)
+    db.session.commit()
+
+    return '{"message": "Success"}'
+
+#/edit_budget?id=8195146&fortAmount=101
+@app.route("/edit_budget")
+@login_required
+def edit_budget():
+    userid = current_user.id
+
+    budgetid = request.args.get('id', type = str)
+    fortAmount = request.args.get('fortAmount', type = int)
+
+    try:
+        budget = BudgetItems.query.filter_by(id=budgetid).first()
+        budget.ammount = fortAmount
+        db.session.commit()
+
+        return json.dumps({"status": "edit complete"}, indent=5)
+    except:
+        return json.dumps({"status": 400}, indent=5)
+
+
