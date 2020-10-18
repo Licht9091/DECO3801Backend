@@ -363,7 +363,6 @@ def allocate_transaction():
 @login_required
 def get_budget():
     userid = current_user.id
-
     #user = load_user("test")
     #login_user(user)
     #userid = current_user.id
@@ -376,7 +375,7 @@ def get_budget():
         budget = {
             "id": row['id'],
             "name": row['name'],
-            "fortnightlyAmount": 0 if math.isnan(row['ammount']) else row['ammount'],
+            "fortnightlyAmount": 0 if (row['ammount'] == None) or (math.isnan(row['ammount'])) else row['ammount'],
             "tag": row['tag']
         }
         all_budgets_list.append(budget)
@@ -423,6 +422,7 @@ def del_budget():
     budgetId = request.args.get('id', type = int)
     budget = BudgetItems.query.filter_by(id=budgetId).first()
 
+    if (budget.userId != userid):  return json.dumps({"status": 400, "message": "Invalid ID for user"}, indent=5)
     if (budget == None): return json.dumps({"status": 400, "message": "Budget was not found"}, indent=5)
     db.session.delete(budget)
     db.session.commit()
@@ -450,3 +450,18 @@ def edit_budget():
         return json.dumps({"status": 400}, indent=5)
 
 
+# DEMO STUBS
+@app.route("/make_transaction", methods=["POST"])
+def make_transaction():
+    if (not current_user.is_authenticated):
+        user = load_user("test")
+        login_user(user)
+
+    transName = request.values.get('name', type = str)
+    amount = request.values.get('amount', type = float)
+
+    transaction = Transaction(id=hash_string(transName + str(datetime.datetime.now())), userId=current_user.id, date=datetime.datetime.now(), description=transName, value=-amount, category="Uncategorized")
+    db.session.add(transaction)
+    db.session.commit()
+
+    return ""
