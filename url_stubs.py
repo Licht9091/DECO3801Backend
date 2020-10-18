@@ -50,6 +50,7 @@ import pandas as pd
 import datetime
 import os
 import hashlib
+import math
 
 date_handler = lambda obj: (
     obj.isoformat()
@@ -375,7 +376,7 @@ def get_budget():
         budget = {
             "id": row['id'],
             "name": row['name'],
-            "fortnightlyAmount": row['ammount'],
+            "fortnightlyAmount": 0 if math.isnan(row['ammount']) else row['ammount'],
             "tag": row['tag']
         }
         all_budgets_list.append(budget)
@@ -383,6 +384,7 @@ def get_budget():
     fin_dict = {
         "all_budgets": all_budgets_list
     }
+
     return json.dumps(fin_dict , indent=5, default=date_handler)
 
 #/add_budget?name=food&fortAmount=100&tag=yes
@@ -393,12 +395,12 @@ def add_budget():
 
     try:
         name = request.args.get('name', type = str)
-        fortAmount = request.args.get('fortAmount', type = int)
+        fortAmount = request.args.get('fortAmount', type = float)
         tag = request.args.get('tag', type = str)
 
         budgetid = hash_string(name+str(userid))
     except:
-        return json.dumps({"success": "Failure due to incorrect inputs"}, indent=5)
+        return json.dumps({"success": 400, "message": "Failure due to incorrect inputs"}, indent=5)
 
     try:
         budget = BudgetItems(id=budgetid, 
@@ -418,30 +420,32 @@ def add_budget():
 def del_budget():
     userid = current_user.id
 
-    budgetId = request.args.get('id', type = str)
+    budgetId = request.args.get('id', type = int)
     budget = BudgetItems.query.filter_by(id=budgetId).first()
 
-    if (budget == None): return '{"message": "Budget was not found"}'
+    if (budget == None): return json.dumps({"status": 400, "message": "Budget was not found"}, indent=5)
     db.session.delete(budget)
     db.session.commit()
 
-    return '{"message": "Success"}'
+    return json.dumps({"status": 200, "message": "Success"}, indent=5)
 
-#/edit_budget?id=8195146&fortAmount=101
+#/edit_budget?id=8195146&&name=newname&fortAmount=101
 @app.route("/edit_budget")
 @login_required
 def edit_budget():
     userid = current_user.id
 
-    budgetid = request.args.get('id', type = str)
-    fortAmount = request.args.get('fortAmount', type = int)
+    budgetid = request.args.get('id', type = int)
+    fortAmount = request.args.get('fortAmount', type = float)
+    name = request.args.get('name', type = str)
 
     try:
         budget = BudgetItems.query.filter_by(id=budgetid).first()
         budget.ammount = fortAmount
+        budget.name = name
         db.session.commit()
 
-        return json.dumps({"status": "edit complete"}, indent=5)
+        return json.dumps({"status": 200}, indent=5)
     except:
         return json.dumps({"status": 400}, indent=5)
 
