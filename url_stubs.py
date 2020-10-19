@@ -375,6 +375,14 @@ def contribute_to_goal():
 @app.route("/add_category")
 @login_required
 def add_category():
+    """Adds a catagory to the catagory table
+
+    Keyword arguments:
+    catagory -- catagory to be added (str)
+
+    Returns:
+    status - json object
+    """
     cName = request.args.get('category', type = str)
     exists = Category.query.filer_by(catagoryName=cName)
 
@@ -390,16 +398,22 @@ def add_category():
 @app.route("/categorize_transaction")
 @login_required
 def categorize_transaction():
+    """Add a catagory to a transaction
+
+    Keyword arguments:
+    transactionid -- transaction to be edited
+    catagory -- catagory to be added (str)
+
+    Returns:
+    status - json object
+    """
     userid = current_user.id
-    #userid = hash_string("test") # Use this when testing
 
     transid = request.args.get('transactionid', type = int)
     newCat = request.args.get('category', type = str)
 
     try:
-        #trans = Transaction.query.filter_by(id=transid, userId=userid).first()
         trans = Transaction.query.get(transid)
-        #print(goal.totalContribution)
         trans.category = newCat
         db.session.commit()
         return json.dumps({"status": "Updated"}, indent=5)
@@ -409,19 +423,23 @@ def categorize_transaction():
 @app.route("/allocate_transaction", methods=["POST"])
 @login_required
 def allocate_transaction():
-    #user = load_user("test")
-    #login_user(user)
+    """Add a goal or multiple to a transaction
+
+    Keyword arguments:
+    transid -- transaction to be edited
+    goal_arr -- list of goals to be effected with amounts, list(str) 
+
+    Returns:
+    status - json object
+    """
     userid = current_user.id
 
     r = request.json
-
     transid = r['transid']
     goals_arr = r['goals_arr']
 
     try:
         for contrabution in goals_arr:
-        #add to the transaction catagory each tuple
-            print(contrabution[0], contrabution[1])
             if type(contrabution[0]) != int or type(contrabution[1]) != float:
                 return json.dumps({"status": "Bad Request"}, indent=5)
             tcat = TransactionCategories(transactionId=transid, goalId=contrabution[0], ammount=contrabution[1])
@@ -436,11 +454,21 @@ def allocate_transaction():
 @app.route("/get_budget")
 @login_required
 def get_budget():
-    userid = current_user.id
+    """get the active budgets
 
-    #user = load_user("test")
-    #login_user(user)
-    #userid = current_user.id
+    Returns:
+    json object - {
+            "all_budgets": list(
+                 {
+                    "id": str,
+                    "name": str,
+                    "fortnightlyAmount": float,
+                    "tag": str
+                }
+            )
+        }
+    """
+    userid = current_user.id
 
     query = BudgetItems.query.filter_by(userId=userid)
     df = pd.read_sql(query.statement, query.session.bind)
@@ -464,6 +492,16 @@ def get_budget():
 @app.route("/add_budget")
 @login_required
 def add_budget():
+    """Create a new budget
+
+    Keyword arguments:
+    name -- name of the budget (str)
+    fortAmount -- amount to be spent a fortnight (float)
+    tag -- honestly not too sure (str)
+
+    Returns:
+    status - json object
+    """
     userid = current_user.id
 
     try:
@@ -491,6 +529,14 @@ def add_budget():
 @app.route("/del_budget")
 @login_required
 def del_budget():
+    """Deletes the defined budget
+
+    Keyword arguments:
+    id -- the id of the budget being deleted (str)
+
+    Returns:
+    status - json object
+    """
     userid = current_user.id
 
     budgetId = request.args.get('id', type = str)
@@ -506,6 +552,15 @@ def del_budget():
 @app.route("/edit_budget")
 @login_required
 def edit_budget():
+    """Edit the amount to contrabute of the defined budget
+
+    Keyword arguments:
+    id -- the id of the budget being edited (str)
+    fortAmount -- amount to contrabute each fortnight (float)
+
+    Returns:
+    status - json object
+    """
     userid = current_user.id
 
     budgetid = request.args.get('id', type = str)
