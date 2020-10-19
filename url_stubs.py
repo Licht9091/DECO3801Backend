@@ -3,18 +3,48 @@ from sql_tables import *
 from flask_login import current_user, login_required, login_user, LoginManager, logout_user, UserMixin
 from flask import Flask, redirect, render_template, request, url_for
 
+import json
+import numpy as np
+import string
+import random
+import pandas as pd
+import datetime
+import os
+import hashlib
+
+"""Handle annoying dates """
+date_handler = lambda obj: (
+    obj.isoformat()
+    if isinstance(obj, (datetime.datetime, datetime.date))
+    else None
+)
+
+def hash_string(s):
+    """Hashes the inputted string - used to create unique id's
+    """
+    return round(int(hashlib.md5(str.encode(s)).hexdigest(),16)/10000000000000000000000000000000)
+
 @login_manager.user_loader
 def load_user(user):
     return User.query.filter_by(username=user).first()
 
+#___________________________
+#API ENDPOINTS
+
 # Entry Endpoint
 @app.route('/')
 def hello_world():
-    return 'Hello from Flask!'
+    return 'Hello from Team Diego!'
 
 # Login endpoint
 @app.route("/login", methods=["POST"])
 def login():
+    """Logs the user in with the credetials provided
+    
+    Keyword arguments:
+    username -- the users name (should not be None)
+    password -- the users password (should not be None)
+    """
     if request.method == "GET": return ''
     if current_user.is_authenticated: return 'Successfully logged in!'
 
@@ -30,6 +60,7 @@ def login():
 @app.route("/logout")
 @login_required
 def logout():
+    """Logs the user out"""
     if current_user.is_authenticated:
         logout_user()
         return 'Successfully logged out!'
@@ -38,39 +69,31 @@ def logout():
 
 @app.route("/testloggedin")
 def testloggedin():
+    """Test if a user is logged in
+
+    Returns:
+    - logged in username
+    """
     if current_user.is_authenticated: return 'The user is logged in. ({})'.format(current_user.username)
     else: return 'The user is not logged in.'
 
-
-import json
-import numpy as np
-import string
-import random
-import pandas as pd
-import datetime
-import os
-import hashlib
-
-date_handler = lambda obj: (
-    obj.isoformat()
-    if isinstance(obj, (datetime.datetime, datetime.date))
-    else None
-)
-
-def hash_string(s):
-    return round(int(hashlib.md5(str.encode(s)).hexdigest(),16)/10000000000000000000000000000000)
-
-
+#/get_transactions
 @app.route("/get_transactions")
 @login_required
 def get_transactions():
+    """Gets all transactions and sorts them into uncatagoriesed income and expense
+
+    Returns:
+    json object -  {
+            "all_transactions": list(dicts),
+            "uncategorized_income": list(dicts),
+            "uncategorized_expense": list(dicts),
+        }
+    """
     userid = current_user.id
 
     query = Transaction.query.filter_by(userId=userid)
     df = pd.read_sql(query.statement, query.session.bind)
-
-    #print("SQLDB\n", df.head())
-    #print("\n", all_trans.columns)
 
     un = df[df['category']=='uncategorized']
     un_income = un[un['value'] > 0]
@@ -117,13 +140,31 @@ def get_transactions():
         "uncategorized_expense": expense_trans_list
     }
     return json.dumps(fin_dict , indent=5, default=date_handler)
-#get_transactions()
 
+#/transaction_stats
 @app.route("/transaction_stats")
 @login_required
 def transaction_stats():
+    """Creates statistics generated from the users transactions
+
+    Returns:
+    json object -  {
+            "total-assets": int,
+            "total-cash": float,
+            "spending-amount": int,
+            "days-till-pay": int,
+            "uncategorised": {
+                "total": float,
+                "income": float,
+                "spending": float
+            },
+            "spending": float,
+            "recent-spending": float,
+            "all-categories": float,
+            "graphable-total-cash": list(float)
+        }
+    """
     userid = current_user.id
-    #userid = hash_string("test") # Use this when testing
 
     query = Transaction.query.filter_by(userId=userid)
     df = pd.read_sql(query.statement, query.session.bind)
@@ -155,10 +196,11 @@ def transaction_stats():
         spend = recent_df[recent_df['category']==cat]['value'].sum()
         recentSpending[cat] = round(spend,2)
 
-    week_changes = list(df.groupby(pd.Grouper(key='date', freq='W-MON'))['value'].sum().reset_index().sort_values('date')['value'].values)
-    #print(df)
+    week_changes = list(df.groupby(pd.Grouper(key='date', freq='W-MON'))['value']
+                                            .sum()
+                                            .reset_index()
+                                            .sort_values('date')['value'].values)
     week_changes = [round(i, 2) for i in week_changes]
-
     allCategories = [i.catagoryName for i in Category.query.all()]
 
     data_dict = {
@@ -182,8 +224,20 @@ def transaction_stats():
 @app.route("/set_goal")
 @login_required
 def set_goal():
+    """Saves a goal to the users profile
+
+    Keyword arguments:
+    description -- description of the goal (str)
+    goalAmount -- goal amount in $ (float)
+    fortnightlyGoal -- forntightly contrabution to meet goal by end date (float)
+
+        Optional:
+            endDate -- End date to complete the goal by (str)
+
+    Returns:
+    status - json object
+    """
     userid = current_user.id
-    #userid = hash_string("test") # Use this when testing
 
     goal_text = request.args.get('description', type = str)
     goalAmount = request.args.get('goalAmount', type = float)
@@ -207,8 +261,15 @@ def set_goal():
 @app.route("/delete_goal")
 @login_required
 def delete_goal():
+    """Deletes the defined goal
+
+    Keyword arguments:
+    id -- the id of the goal being deleted (str)
+
+    Returns:
+    status - json object
+    """
     userid = current_user.id
-    #userid = hash_string("test") # Use this when testing
 
     goalId = request.args.get('id', type = str)
     goal = Goal.query.filter_by(id=goalId).first()
@@ -221,19 +282,29 @@ def delete_goal():
 
 #/goal_status?userid=33103738
 @app.route("/goal_status")
-#@login_required
+@login_required
 def goal_status():
-    userid = current_user.id
+    """Provides the completion status of all current goals
 
-    #user = load_user("test")
-    #login_user(user)
-    #userid = current_user.id
+    Returns:
+    json object - list(
+            { 
+                "description": str
+                "id": str
+                "startDate": str
+                "endDate": str
+                "goal-value": int
+                "fortnightly-contribution": int
+                "current-contribution": float
+            }
+        )
+    """
+    userid = current_user.id
 
     try:
         query = Goal.query.filter_by(userId=userid).all()
         TransCats = TransactionCategories.query
         df = pd.read_sql(TransCats.statement, TransCats.session.bind)
-        #print(df)
         grouped = df.groupby('goalId')
         
         goalSums = {}
@@ -272,24 +343,27 @@ def goal_status():
     except Exception as e:
         return json.dumps({"success": 400, "error":str(e)}, indent=5)
 
-#goal_status()
-
 #/contribute_to_goal?goalid=12493741&contrabution=62.3
 @app.route("/contribute_to_goal")
 @login_required
 def contribute_to_goal():
-    #MAYBE INSTEAD ADD A FAKE CATAGORY THAT THIS IS GOING OT AND ADD IT TO CAT TRANS
+    """Edit a goals current contrabution amount
+
+    Keyword arguments:
+    id -- the id of the goal being edited (str)
+    contrabution -- amount to add
+
+    Returns:
+    status - json object
+    """
     userid = current_user.id
-    #userid = hash_string("test") # Use this when testing
 
     goalid = request.args.get('goalid', type = int)
     contrabution = request.args.get('contrabution', type = float)
-    #goalid = 12493741
 
     try:
         query = Goal.query.filter_by(id=goalid, userId=userid).all()
         goal = Goal.query.get(goalid)
-        #print(goal.totalContribution)
         goal.totalContribution = goal.totalContribution + contrabution
         db.session.commit()
 
@@ -297,6 +371,7 @@ def contribute_to_goal():
     except:
         return json.dumps({"status": 400}, indent=5)
 
+#/add_category
 @app.route("/add_category")
 @login_required
 def add_category():
@@ -444,5 +519,3 @@ def edit_budget():
         return json.dumps({"status": "edit complete"}, indent=5)
     except:
         return json.dumps({"status": 400}, indent=5)
-
-
