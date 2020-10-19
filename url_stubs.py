@@ -77,7 +77,31 @@ def testloggedin():
     if current_user.is_authenticated: return 'The user is logged in. ({})'.format(current_user.username)
     else: return 'The user is not logged in.'
 
+<<<<<<< HEAD
 #/get_transactions
+=======
+
+import json
+import numpy as np
+import string
+import random
+import pandas as pd
+import datetime
+import os
+import hashlib
+import math
+
+date_handler = lambda obj: (
+    obj.isoformat()
+    if isinstance(obj, (datetime.datetime, datetime.date))
+    else None
+)
+
+def hash_string(s):
+    return round(int(hashlib.md5(str.encode(s)).hexdigest(),16)/10000000000000000000000000000000)
+
+
+>>>>>>> ec9b9fd8f2d54880509daf38f6b47b56c36ffc7e
 @app.route("/get_transactions")
 @login_required
 def get_transactions():
@@ -469,6 +493,12 @@ def get_budget():
         }
     """
     userid = current_user.id
+<<<<<<< HEAD
+=======
+    #user = load_user("test")
+    #login_user(user)
+    #userid = current_user.id
+>>>>>>> ec9b9fd8f2d54880509daf38f6b47b56c36ffc7e
 
     query = BudgetItems.query.filter_by(userId=userid)
     df = pd.read_sql(query.statement, query.session.bind)
@@ -478,7 +508,7 @@ def get_budget():
         budget = {
             "id": row['id'],
             "name": row['name'],
-            "fortnightlyAmount": row['ammount'],
+            "fortnightlyAmount": 0 if (row['ammount'] == None) or (math.isnan(row['ammount'])) else row['ammount'],
             "tag": row['tag']
         }
         all_budgets_list.append(budget)
@@ -486,6 +516,7 @@ def get_budget():
     fin_dict = {
         "all_budgets": all_budgets_list
     }
+
     return json.dumps(fin_dict , indent=5, default=date_handler)
 
 #/add_budget?name=food&fortAmount=100&tag=yes
@@ -506,12 +537,12 @@ def add_budget():
 
     try:
         name = request.args.get('name', type = str)
-        fortAmount = request.args.get('fortAmount', type = int)
+        fortAmount = request.args.get('fortAmount', type = float)
         tag = request.args.get('tag', type = str)
 
         budgetid = hash_string(name+str(userid))
     except:
-        return json.dumps({"success": "Failure due to incorrect inputs"}, indent=5)
+        return json.dumps({"success": 400, "message": "Failure due to incorrect inputs"}, indent=5)
 
     try:
         budget = BudgetItems(id=budgetid, 
@@ -539,16 +570,17 @@ def del_budget():
     """
     userid = current_user.id
 
-    budgetId = request.args.get('id', type = str)
+    budgetId = request.args.get('id', type = int)
     budget = BudgetItems.query.filter_by(id=budgetId).first()
 
-    if (budget == None): return '{"message": "Budget was not found"}'
+    if (budget.userId != userid):  return json.dumps({"status": 400, "message": "Invalid ID for user"}, indent=5)
+    if (budget == None): return json.dumps({"status": 400, "message": "Budget was not found"}, indent=5)
     db.session.delete(budget)
     db.session.commit()
 
-    return '{"message": "Success"}'
+    return json.dumps({"status": 200, "message": "Success"}, indent=5)
 
-#/edit_budget?id=8195146&fortAmount=101
+#/edit_budget?id=8195146&&name=newname&fortAmount=101
 @app.route("/edit_budget")
 @login_required
 def edit_budget():
@@ -563,14 +595,34 @@ def edit_budget():
     """
     userid = current_user.id
 
-    budgetid = request.args.get('id', type = str)
-    fortAmount = request.args.get('fortAmount', type = int)
+    budgetid = request.args.get('id', type = int)
+    fortAmount = request.args.get('fortAmount', type = float)
+    name = request.args.get('name', type = str)
 
     try:
         budget = BudgetItems.query.filter_by(id=budgetid).first()
         budget.ammount = fortAmount
+        budget.name = name
         db.session.commit()
 
-        return json.dumps({"status": "edit complete"}, indent=5)
+        return json.dumps({"status": 200}, indent=5)
     except:
         return json.dumps({"status": 400}, indent=5)
+
+
+# DEMO STUBS
+@app.route("/make_transaction", methods=["POST"])
+def make_transaction():
+    """Endpoint useful to the Demo """
+    if (not current_user.is_authenticated):
+        user = load_user("test")
+        login_user(user)
+
+    transName = request.values.get('name', type = str)
+    amount = request.values.get('amount', type = float)
+
+    transaction = Transaction(id=hash_string(transName + str(datetime.datetime.now())), userId=current_user.id, date=datetime.datetime.now(), description=transName, value=-amount, category="Uncategorized")
+    db.session.add(transaction)
+    db.session.commit()
+
+    return ""
