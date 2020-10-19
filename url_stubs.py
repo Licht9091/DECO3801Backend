@@ -77,31 +77,7 @@ def testloggedin():
     if current_user.is_authenticated: return 'The user is logged in. ({})'.format(current_user.username)
     else: return 'The user is not logged in.'
 
-<<<<<<< HEAD
 #/get_transactions
-=======
-
-import json
-import numpy as np
-import string
-import random
-import pandas as pd
-import datetime
-import os
-import hashlib
-import math
-
-date_handler = lambda obj: (
-    obj.isoformat()
-    if isinstance(obj, (datetime.datetime, datetime.date))
-    else None
-)
-
-def hash_string(s):
-    return round(int(hashlib.md5(str.encode(s)).hexdigest(),16)/10000000000000000000000000000000)
-
-
->>>>>>> ec9b9fd8f2d54880509daf38f6b47b56c36ffc7e
 @app.route("/get_transactions")
 @login_required
 def get_transactions():
@@ -274,7 +250,14 @@ def set_goal():
 
     goalId = hash_string(goal_text)
     try:
-        goal = Goal(id=goalId, userId=userid, description=goal_text, goalAmount=goalAmount, totalContribution=0, goalStartDate=datetime.datetime.now(), goalEndDate=endDate, fortnightlyContribution=fortnightlyGoal)
+        goal = Goal(id=goalId, 
+                    userId=userid, 
+                    description=goal_text, 
+                    goalAmount=goalAmount, 
+                    totalContribution=0, 
+                    goalStartDate=datetime.datetime.now(), 
+                    goalEndDate=endDate, 
+                    fortnightlyContribution=fortnightlyGoal)
         db.session.add(goal)
         db.session.commit()
         print (goal.id)
@@ -466,7 +449,9 @@ def allocate_transaction():
         for contrabution in goals_arr:
             if type(contrabution[0]) != int or type(contrabution[1]) != float:
                 return json.dumps({"status": "Bad Request"}, indent=5)
-            tcat = TransactionCategories(transactionId=transid, goalId=contrabution[0], ammount=contrabution[1])
+            tcat = TransactionCategories(transactionId=transid, 
+                                        goalId=contrabution[0], 
+                                        ammount=contrabution[1])
             db.session.add(tcat)
         db.session.commit()
         return json.dumps({"status": 200}, indent=5)
@@ -493,12 +478,6 @@ def get_budget():
         }
     """
     userid = current_user.id
-<<<<<<< HEAD
-=======
-    #user = load_user("test")
-    #login_user(user)
-    #userid = current_user.id
->>>>>>> ec9b9fd8f2d54880509daf38f6b47b56c36ffc7e
 
     query = BudgetItems.query.filter_by(userId=userid)
     df = pd.read_sql(query.statement, query.session.bind)
@@ -573,8 +552,10 @@ def del_budget():
     budgetId = request.args.get('id', type = int)
     budget = BudgetItems.query.filter_by(id=budgetId).first()
 
-    if (budget.userId != userid):  return json.dumps({"status": 400, "message": "Invalid ID for user"}, indent=5)
-    if (budget == None): return json.dumps({"status": 400, "message": "Budget was not found"}, indent=5)
+    if (budget.userId != userid):  
+        return json.dumps({"status": 400, "message": "Invalid ID for user"}, indent=5)
+    if (budget == None): 
+        return json.dumps({"status": 400, "message": "Budget was not found"}, indent=5)
     db.session.delete(budget)
     db.session.commit()
 
@@ -621,7 +602,12 @@ def make_transaction():
     transName = request.values.get('name', type = str)
     amount = request.values.get('amount', type = float)
 
-    transaction = Transaction(id=hash_string(transName + str(datetime.datetime.now())), userId=current_user.id, date=datetime.datetime.now(), description=transName, value=-amount, category="Uncategorized")
+    transaction = Transaction(id=hash_string(transName + str(datetime.datetime.now())), 
+                            userId=current_user.id, 
+                            date=datetime.datetime.now(), 
+                            description=transName, 
+                            value=-amount, 
+                            category="Uncategorized")
     db.session.add(transaction)
     db.session.commit()
 
