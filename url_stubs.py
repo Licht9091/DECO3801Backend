@@ -92,13 +92,16 @@ def get_transactions():
     """
     userid = current_user.id
 
+    #access the transaction table
     query = Transaction.query.filter_by(userId=userid)
     df = pd.read_sql(query.statement, query.session.bind)
 
+    #sort out uncatagorised, income and expenses
     un = df[df['category']=='uncategorized']
     un_income = un[un['value'] > 0]
     un_expense = un[un['value'] < 0]
 
+    #turn data into dict
     all_trans_list = []
     for ix, row in df.iterrows():
         transaction = {
@@ -111,6 +114,7 @@ def get_transactions():
         }
         all_trans_list.append(transaction)
 
+    #turn data into dict
     income_trans_list = []
     for ix, row in un_income.iterrows():
         transaction = {
@@ -123,6 +127,7 @@ def get_transactions():
         }
         income_trans_list.append(transaction)
 
+    #turn data into dict
     expense_trans_list = []
     for ix, row in un_expense.iterrows():
         transaction = {
@@ -134,6 +139,7 @@ def get_transactions():
             "goal": row['goalId']
         }
         expense_trans_list.append(transaction)
+
     fin_dict = {
         "all_transactions": all_trans_list,
         "uncategorized_income": income_trans_list,
@@ -166,12 +172,15 @@ def transaction_stats():
     """
     userid = current_user.id
 
+    #access transaction table
     query = Transaction.query.filter_by(userId=userid)
     df = pd.read_sql(query.statement, query.session.bind)
 
+    #basic transaction calcs
     df['money'] = df['value'].cumsum()
     total_money = df['money'].iloc[-1]
 
+    #split data into smaller catagories of total, spending and income, uncatagorised and catagorised
     un = df[df['category']=='uncategorized']
     un_total = un['value'].shape[0]
     un_spending = un[un['value'] < 0]['value'].shape[0]
@@ -183,19 +192,24 @@ def transaction_stats():
     spending = {
         "total": spending
     }
+
+    #do some calc for total spending per catagory
     for cat in df['category'].unique().tolist():
         spend = df[df['category']==cat]['value'].sum()
         spending[cat] = round(spend,2)
 
+    #limit spending to most recent spending
     recent_df =  df[df['date'] >= np.datetime64('now')- np.timedelta64(14,'D')]
     recentSpending = {
         "total": recent_df[recent_df['value'] < 0]['value'].sum()
     }
-    print(recent_df.shape, df.shape)
+
+    #prep recent spending to be turned to dict
     for cat in recent_df['category'].unique().tolist():
         spend = recent_df[recent_df['category']==cat]['value'].sum()
         recentSpending[cat] = round(spend,2)
 
+    #transactions ready for graphing
     week_changes = list(df.groupby(pd.Grouper(key='date', freq='W-MON'))['value']
                                             .sum()
                                             .reset_index()
@@ -203,6 +217,7 @@ def transaction_stats():
     week_changes = [round(i, 2) for i in week_changes]
     allCategories = [i.catagoryName for i in Category.query.all()]
 
+    #prep for json
     data_dict = {
         "total-assets": np.random.randint(7000,9000),
         "total-cash": round(total_money, 2),
@@ -237,8 +252,8 @@ def set_goal():
     Returns:
     status - json object
     """
+    #gather function called params
     userid = current_user.id
-
     goal_text = request.args.get('description', type = str)
     goalAmount = request.args.get('goalAmount', type = float)
     fortnightlyGoal = request.args.get('fortnightlyGoal', type = float)
@@ -248,8 +263,9 @@ def set_goal():
     except:
         endDate = None
 
-    goalId = hash_string(goal_text)
+    goalId = hash_string(goal_text) #unique
     try:
+        #create the new goal entitiy
         goal = Goal(id=goalId, 
                     userId=userid, 
                     description=goal_text, 
@@ -260,10 +276,9 @@ def set_goal():
                     fortnightlyContribution=fortnightlyGoal)
         db.session.add(goal)
         db.session.commit()
-        print (goal.id)
-        return json.dumps({"success": 200, "id": goal.id}, indent=5)
+        return json.dumps({"success": 200, , "message": "Success",  "id": goal.id}, indent=5)
     except:
-        return json.dumps({"success": 400}, indent=5)
+        return json.dumps({"success": 400, "message": "Could not add the Goal"}, indent=5)
 
 @app.route("/delete_goal")
 @login_required
@@ -277,10 +292,11 @@ def delete_goal():
     status - json object
     """
     userid = current_user.id
-
+    #gather goal id
     goalId = request.args.get('id', type = str)
     goal = Goal.query.filter_by(id=goalId).first()
 
+    #delete
     if (goal == None): return '{"message": "Goal was not found"}'
     db.session.delete(goal)
     db.session.commit()
@@ -309,15 +325,18 @@ def goal_status():
     userid = current_user.id
 
     try:
+        #get Goal table data
         query = Goal.query.filter_by(userId=userid).all()
         TransCats = TransactionCategories.query
         df = pd.read_sql(TransCats.statement, TransCats.session.bind)
         grouped = df.groupby('goalId')
         
+        #get the sum of spending/income per goal
         goalSums = {}
         for name, group in grouped:
             goalSums[name] = group['ammount'].sum()
 
+        #prep to turn df into the correct shaped array of dicts for json
         arr = []
         for g in query:
             if g.goalStartDate is not None:
@@ -340,6 +359,7 @@ def goal_status():
                 }
             arr.append(d)
 
+        #prep for json
         data_dict = {
             "goals": arr
         }
@@ -348,7 +368,7 @@ def goal_status():
 
         return result
     except Exception as e:
-        return json.dumps({"success": 400, "error":str(e)}, indent=5)
+        return json.dumps({"success": 400, , "message": "Something went wrong, check error message", "error":str(e)}, indent=5)
 
 #/contribute_to_goal?goalid=12493741&contrabution=62.3
 @app.route("/contribute_to_goal")
@@ -365,18 +385,19 @@ def contribute_to_goal():
     """
     userid = current_user.id
 
+    #get function params
     goalid = request.args.get('goalid', type = int)
     contrabution = request.args.get('contrabution', type = float)
 
     try:
+        #Edit the specified goal
         query = Goal.query.filter_by(id=goalid, userId=userid).all()
         goal = Goal.query.get(goalid)
         goal.totalContribution = goal.totalContribution + contrabution
         db.session.commit()
-
         return json.dumps({"status": "ADDED"}, indent=5)
     except:
-        return json.dumps({"status": 400}, indent=5)
+        return json.dumps({"status": 400, "message": "Could not edit the specified goal"}, indent=5)
 
 #/add_category
 @app.route("/add_category")
@@ -390,11 +411,12 @@ def add_category():
     Returns:
     status - json object
     """
+    #get function params
     cName = request.args.get('category', type = str)
     exists = Category.query.filer_by(catagoryName=cName)
 
+    #add the catagory
     if (exists != None): return '{"message": "Already exists"}'
-
     c = Category(catagoryName=cName)
     db.session.add(c)
     db.session.commit()
@@ -416,16 +438,18 @@ def categorize_transaction():
     """
     userid = current_user.id
 
+    #get function params
     transid = request.args.get('transactionid', type = int)
     newCat = request.args.get('category', type = str)
 
     try:
+        #edit the specified transaction with the new catagory
         trans = Transaction.query.get(transid)
         trans.category = newCat
         db.session.commit()
         return json.dumps({"status": "Updated"}, indent=5)
     except:
-        return json.dumps({"status": 400}, indent=5)
+        return json.dumps({"status": 400, "message": "Could not edit the specified transaction"}, indent=5)
 
 @app.route("/allocate_transaction", methods=["POST"])
 @login_required
@@ -441,11 +465,13 @@ def allocate_transaction():
     """
     userid = current_user.id
 
+    #get function params
     r = request.json
     transid = r['transid']
     goals_arr = r['goals_arr']
 
     try:
+        #add a or multiple goals to a single transaction by adding a or multiple rows to transactioncatagories table
         for contrabution in goals_arr:
             if type(contrabution[0]) != int or type(contrabution[1]) != float:
                 return json.dumps({"status": "Bad Request"}, indent=5)
@@ -454,9 +480,9 @@ def allocate_transaction():
                                         ammount=contrabution[1])
             db.session.add(tcat)
         db.session.commit()
-        return json.dumps({"status": 200}, indent=5)
+        return json.dumps({"status": 200, "message": "Success"}, indent=5)
     except:
-        return json.dumps({"status": 400}, indent=5)
+        return json.dumps({"status": 400, "message": "Could not add the required transactioncatagorys to fulfill your request"}, indent=5)
 
 
 #/get_budget
@@ -479,9 +505,11 @@ def get_budget():
     """
     userid = current_user.id
 
+    #get the BudgetItems table
     query = BudgetItems.query.filter_by(userId=userid)
     df = pd.read_sql(query.statement, query.session.bind)
 
+    #prep data from df to array of dicts to be turned into json
     all_budgets_list = []
     for ix, row in df.iterrows():
         budget = {
@@ -492,6 +520,7 @@ def get_budget():
         }
         all_budgets_list.append(budget)
 
+    #prep json
     fin_dict = {
         "all_budgets": all_budgets_list
     }
@@ -515,6 +544,7 @@ def add_budget():
     userid = current_user.id
 
     try:
+        #gather function params
         name = request.args.get('name', type = str)
         fortAmount = request.args.get('fortAmount', type = float)
         tag = request.args.get('tag', type = str)
@@ -524,6 +554,7 @@ def add_budget():
         return json.dumps({"success": 400, "message": "Failure due to incorrect inputs"}, indent=5)
 
     try:
+        #add a new budget item
         budget = BudgetItems(id=budgetid, 
                     userId=userid, 
                     name=name,
@@ -531,9 +562,9 @@ def add_budget():
                     tag=tag)
         db.session.add(budget)
         db.session.commit()
-        return json.dumps({"success": 200, "id": budgetid}, indent=5)
+        return json.dumps({"success": 200, "message": "Success", "id": budgetid}, indent=5)
     except:
-        return json.dumps({"success": 400}, indent=5)
+        return json.dumps({"success": 400, "message": "Could not add the budget"}, indent=5)
 
 #/del_budget?id=8195146
 @app.route("/del_budget")
@@ -548,10 +579,11 @@ def del_budget():
     status - json object
     """
     userid = current_user.id
-
+    #gather function params
     budgetId = request.args.get('id', type = int)
     budget = BudgetItems.query.filter_by(id=budgetId).first()
 
+    #delete specified budget
     if (budget.userId != userid):  
         return json.dumps({"status": 400, "message": "Invalid ID for user"}, indent=5)
     if (budget == None): 
@@ -576,19 +608,21 @@ def edit_budget():
     """
     userid = current_user.id
 
+    #gather function params
     budgetid = request.args.get('id', type = int)
     fortAmount = request.args.get('fortAmount', type = float)
     name = request.args.get('name', type = str)
 
     try:
+        #edit the specified budgets fortnightly contrabution 
         budget = BudgetItems.query.filter_by(id=budgetid).first()
         budget.ammount = fortAmount
         budget.name = name
         db.session.commit()
 
-        return json.dumps({"status": 200}, indent=5)
+        return json.dumps({"status": 200, "message": "Success"}, indent=5)
     except:
-        return json.dumps({"status": 400}, indent=5)
+        return json.dumps({"status": 400 , "message": "Could not edit the budget"}, indent=5)
 
 
 # DEMO STUBS
