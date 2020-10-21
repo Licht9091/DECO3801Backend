@@ -277,7 +277,7 @@ def set_goal():
                     fortnightlyContribution=fortnightlyGoal)
         db.session.add(goal)
         db.session.commit()
-        return json.dumps({"success": 200, , "message": "Success",  "id": goal.id}, indent=5)
+        return json.dumps({"success": 200, "message": "Success",  "id": goal.id}, indent=5)
     except:
         return json.dumps({"success": 400, "message": "Could not add the Goal"}, indent=5)
 
@@ -369,7 +369,7 @@ def goal_status():
 
         return result
     except Exception as e:
-        return json.dumps({"success": 400, , "message": "Something went wrong, check error message", "error":str(e)}, indent=5)
+        return json.dumps({"success": 400, "message": "Something went wrong, check error message", "error":str(e)}, indent=5)
 
 #/contribute_to_goal?goalid=12493741&contrabution=62.3
 @app.route("/contribute_to_goal")
