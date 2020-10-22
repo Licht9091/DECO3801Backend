@@ -281,6 +281,56 @@ def set_goal():
     except:
         return json.dumps({"success": 400, "message": "Could not add the Goal"}, indent=5)
 
+@app.route("/edit_goal")
+@login_required
+def edit_goal():
+    """Edits a goal
+
+    Keyword arguments:
+    id -- id of the goal (int)
+
+    Optional arguments:
+    description -- goal name (str)
+    goalAmount -- goal amount in $ (float)
+    fortnightlyGoal -- forntightly contrabution to meet goal by end date (float)
+    endDate -- End date to complete the goal by (str)
+
+    Returns:
+    status - json object
+    """
+    #gather function called params
+    userid = current_user.id
+
+    try: goalName = request.args.get('description', type = str)
+    except: goalName = None
+    
+    try: goalAmount = request.args.get('goalAmount', type = float)
+    except: goalAmount = None
+
+    try: fortnightlyGoal = request.args.get('fortnightlyGoal', type = float)
+    except: fortnightlyGoal = None
+
+    try:
+        endDate = request.args.get('endDate', type = str)
+        endDate = datetime.datetime.strptime(endDate, '%d-%m-%Y')
+    except:
+        endDate = None
+
+    try: 
+        goalId = request.args.get('id', type = int)
+        query = Goal.query.filter_by(id=goalId, userId=userid).all()
+        goal = Goal.query.get(goalId)
+
+        if goalName != None: goal.description = goalName
+        if goalAmount != None: goal.goalAmount = goalAmount
+        if fortnightlyGoal != None: goal.fortnightlyContribution = fortnightlyGoal
+        if endDate != None: goal.goalEndDate = endDate
+
+        db.session.commit()
+        return json.dumps({"success": 200, "message": "Success"}, indent=5)
+    except:
+        return json.dumps({"success": 400, "message": "Could not edit the Goal"}, indent=5)
+
 @app.route("/delete_goal")
 @login_required
 def delete_goal():
