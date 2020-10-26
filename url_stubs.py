@@ -167,7 +167,7 @@ def transaction_stats():
             },
             "spending": float,
             "recent-spending": float,
-            "all-categories": float,
+            "all-categories": list(string),
             "graphable-total-cash": list(float)
         }
     """
@@ -182,7 +182,7 @@ def transaction_stats():
     total_money = df['money'].iloc[-1]
 
     #split data into smaller catagories of total, spending and income, uncatagorised and catagorised
-    un = df[df['category']=='uncategorized']
+    un = df[df['category']=='Uncategorized']
     un_total = un['value'].shape[0]
     un_spending = un[un['value'] < 0]['value'].shape[0]
     un_income = un[un['value'] > 0]['value'].shape[0]
@@ -701,3 +701,12 @@ def make_transaction():
     db.session.commit()
 
     return ""
+
+# @app.route("/FIX", methods=["GET", "POST"])
+# def FIX():
+#     trans = Category.query.all()
+#     for t in trans:
+#         print (t.catagoryName)
+
+#     return ''
+#     #db.session.commit()
