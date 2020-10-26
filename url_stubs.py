@@ -111,7 +111,7 @@ def get_transactions():
             "description": row['description'],
             "value": row['value'],
             "category": row['category'],
-
+            "goal": None if math.isnan(row['goalId']) else row['goalId']
         }
         all_trans_list.append(transaction)
 
@@ -146,6 +146,8 @@ def get_transactions():
         "uncategorized_income": income_trans_list,
         "uncategorized_expense": expense_trans_list
     }
+
+    #print (json.dumps(fin_dict , indent=5, default=date_handler))
     return json.dumps(fin_dict , indent=5, default=date_handler)
 
 #/transaction_stats
@@ -234,6 +236,7 @@ def transaction_stats():
         "all-categories": allCategories,
         "graphable-total-cash": week_changes #[100, 120, 140, 90]
     }
+
     return data_dict
 
 #/set_goal?description=HOLIDAY&goalAmount=3000&endDate=01-01-2025
@@ -406,7 +409,8 @@ def goal_status():
                     "endDate": eDate,
                     "goal-value": g.goalAmount,
                     "fortnightly-contribution": g.fortnightlyContribution,
-                    "current-contribution": goalSums.get(g.id, 0)#g.totalContribution
+                    "current-contribution": g.totalContribution,
+                    "total-spent": goalSums.get(g.id, 0)
                 }
             arr.append(d)
 
@@ -421,15 +425,15 @@ def goal_status():
     except Exception as e:
         return json.dumps({"success": 400, "message": "Something went wrong, check error message", "error":str(e)}, indent=5)
 
-#/contribute_to_goal?goalid=12493741&contrabution=62.3
+#/contribute_to_goal?goalid=12493741&contribution=62.3
 @app.route("/contribute_to_goal")
 @login_required
 def contribute_to_goal():
-    """Edit a goals current contrabution amount
+    """Edit a goals current contribution amount
 
     Keyword arguments:
-    id -- the id of the goal being edited (str)
-    contrabution -- amount to add
+    goalId -- the id of the goal being edited (str)
+    contribution -- amount to add
 
     Returns:
     status - json object
@@ -437,18 +441,18 @@ def contribute_to_goal():
     userid = current_user.id
 
     #get function params
-    goalid = request.args.get('goalid', type = int)
-    contrabution = request.args.get('contrabution', type = float)
+    goalid = request.args.get('goalId', type = int)
+    contribution = request.args.get('contribution', type = float)
 
     try:
         #Edit the specified goal
         query = Goal.query.filter_by(id=goalid, userId=userid).all()
         goal = Goal.query.get(goalid)
-        goal.totalContribution = goal.totalContribution + contrabution
+        goal.totalContribution = goal.totalContribution + contribution
         db.session.commit()
-        return json.dumps({"status": "ADDED"}, indent=5)
+        return json.dumps({"success": 200, "message": "ADDED"}, indent=5)
     except:
-        return json.dumps({"status": 400, "message": "Could not edit the specified goal"}, indent=5)
+        return json.dumps({"success": 400, "message": "Could not edit the specified goal"}, indent=5)
 
 #/add_category
 @app.route("/add_category")
@@ -508,7 +512,7 @@ def allocate_transaction():
     """Add a goal or multiple to a transaction
 
     Keyword arguments:
-    transid -- transaction to be edited
+    transId -- transaction to be edited
     goal_arr -- list of goals to be effected with amounts, list(str) 
 
     Returns:
@@ -518,22 +522,37 @@ def allocate_transaction():
 
     #get function params
     r = request.json
-    transid = r['transid']
+    transId = r['transId']
     goals_arr = r['goals_arr']
 
     try:
         #add a or multiple goals to a single transaction by adding a or multiple rows to transactioncatagories table
-        for contrabution in goals_arr:
-            if type(contrabution[0]) != int or type(contrabution[1]) != float:
-                return json.dumps({"status": "Bad Request"}, indent=5)
-            tcat = TransactionCategories(transactionId=transid, 
-                                        goalId=contrabution[0], 
-                                        ammount=contrabution[1])
+        for contribution in goals_arr:
+            #print ("id: {} -> {}".format(type(contribution[0]), type(contribution[1])))
+            if type(contribution[0]) != int or type(contribution[1]) != float:
+                return json.dumps({"success": 400, "message": "Bad Request"}, indent=5)
+
+            # Delete existing entries
+            existingTransCategory = TransactionCategories.query.filter_by(transactionId=transId).first()
+            if (existingTransCategory != None): db.session.delete(existingTransCategory)
+
+            # Create new entry
+            tcat = TransactionCategories(transactionId=transId, 
+                                        goalId=contribution[0], 
+                                        ammount=contribution[1])
+
+            trans = Transaction.query.filter_by(id=transId).first()
+            goal = Goal.query.filter_by(id=contribution[0]).first()
+
+            if (trans == None): return json.dumps({"success": 400, "message": "Failed to find transaction"}, indent=5)
+            if (goal == None): return json.dumps({"success": 400, "message": "Failed to find goal"}, indent=5)
+            trans.goalId = goal.id
+
             db.session.add(tcat)
         db.session.commit()
-        return json.dumps({"status": 200, "message": "Success"}, indent=5)
+        return json.dumps({"success": 200, "message": "Success"}, indent=5)
     except:
-        return json.dumps({"status": 400, "message": "Could not add the required transactioncatagorys to fulfill your request"}, indent=5)
+        return json.dumps({"success": 400, "message": "Could not add the required transactioncatagorys to fulfill your request"}, indent=5)
 
 
 #/get_budget
@@ -701,12 +720,3 @@ def make_transaction():
     db.session.commit()
 
     return ""
-
-# @app.route("/FIX", methods=["GET", "POST"])
-# def FIX():
-#     trans = Category.query.all()
-#     for t in trans:
-#         print (t.catagoryName)
-
-#     return ''
-#     #db.session.commit()
