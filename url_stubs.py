@@ -677,7 +677,7 @@ def edit_budget():
 
 
 # DEMO STUBS
-@app.route("/make_transaction", methods=["POST"])
+@app.route("/make_transaction", methods=["GET", "POST"])
 def make_transaction():
     """Endpoint useful to the Demo """
     if (not current_user.is_authenticated):
@@ -686,6 +686,10 @@ def make_transaction():
 
     transName = request.values.get('name', type = str)
     amount = request.values.get('amount', type = float)
+
+    TNAMES = ["VISA PURCHASE WOOLWORTHS LTD", "VISA PURCHASE STEAM", "VISA PURCHASE PAYPAL *ADOMESYSTEM", "EFTPOS PURCHASE COLES LTD"]
+    transName = TNAMES[random.randint(0, 3)]
+    amount = random.random()*100
 
     transaction = Transaction(id=hash_string(transName + str(datetime.datetime.now())), 
                             userId=current_user.id, 
