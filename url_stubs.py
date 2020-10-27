@@ -226,6 +226,7 @@ def transaction_stats():
         "total-cash": round(total_money, 2),
         "spending-amount": np.random.randint(300,3000),
         "days-till-pay": np.random.randint(1, 14),
+        "period-start": current_user.periodStart,
         "uncategorised": {
             "total": round(un_total, 2),
             "income": round(un_income, 2),
