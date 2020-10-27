@@ -240,6 +240,24 @@ def transaction_stats():
 
     return data_dict
 
+@app.route("/start_period")
+@login_required
+def start_period():
+    """Start a new period
+
+    Sets User.periodStart to datetime.now()
+
+    Returns:
+    - Status message json
+    """
+
+    current_user.periodStart = datetime.datetime.now()
+
+    db.session.commit()
+
+    return json.dumps({"status": 200, "message": "Success", "periodStart": current_user.periodStart.strftime("%d-%m-%Y")}, indent=5)
+    
+
 #/set_goal?description=HOLIDAY&goalAmount=3000&endDate=01-01-2025
 @app.route("/set_goal")
 @login_required
