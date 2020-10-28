@@ -209,7 +209,7 @@ def transaction_stats():
 
     #prep recent spending to be turned to dict
     for cat in recent_df['category'].unique().tolist():
-        spend = recent_df[recent_df['category']==cat]['value'].sum()
+        spend = recent_df[(recent_df['category'] == cat) & (recent_df['value'] < 0)]['value'].sum()
         recentSpending[cat] = round(spend,2)
 
     #transactions ready for graphing
