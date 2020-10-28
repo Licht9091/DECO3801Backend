@@ -12,6 +12,7 @@ class User(UserMixin, db.Model):
     passwordHash = db.Column(db.String(255))
     registerDate = db.Column(db.DateTime, default=datetime.now)
     periodStart = db.Column(db.DateTime, default=datetime.now)
+    spendingAmount = db.Column(db.Float)
     bankAccountId = db.Column(db.Integer, db.ForeignKey('bankaccounts.accountNumber', ondelete='SET NULL'), nullable=True)
     bankAccount = db.relationship('BankAccount', foreign_keys=bankAccountId)
 

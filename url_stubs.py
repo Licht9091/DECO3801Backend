@@ -222,10 +222,10 @@ def transaction_stats():
 
     #prep for json
     data_dict = {
-        "total-assets": np.random.randint(7000,9000),
-        "total-cash": round(total_money, 2),
-        "spending-amount": np.random.randint(300,3000),
-        "days-till-pay": np.random.randint(1, 14),
+        "total-assets": np.random.randint(7000,9000), # Future functionality
+        "total-cash": round(total_money, 2),          # Future functionality
+        "spending-amount": current_user.spendingAmount + recentSpending["total"],
+        "days-till-pay": np.random.randint(1, 14),    # Future functionality
         "period-start": current_user.periodStart,
         "uncategorised": {
             "total": round(un_total, 2),
@@ -235,25 +235,50 @@ def transaction_stats():
         "spending": spending,
         "recent-spending": recentSpending,
         "all-categories": allCategories,
-        "graphable-total-cash": week_changes #[100, 120, 140, 90]
+        "graphable-total-cash": week_changes           # Future functionality
     }
 
     return data_dict
 
-@app.route("/start_period")
+@app.route("/start_period", methods=["POST"])
 @login_required
 def start_period():
     """Start a new period
 
     Sets User.periodStart to datetime.now()
 
+    Keyword arguments (json body):
+        transactionIds -- List of transactionIds ([int])
+
     Returns:
     - Status message json
     """
 
-    current_user.periodStart = datetime.datetime.now()
+    r = request.json
+    print (r['transactionIds'])
+    userid = current_user.id
 
-    db.session.commit()
+    # Access transaction table
+    query = Transaction.query.filter_by(userId=userid)
+    df = pd.read_sql(query.statement, query.session.bind)
+
+    # Calculate roll over
+    recent_df = df[df['date'] >= current_user.periodStart]
+    recent_spending = recent_df[recent_df['value'] < 0]['value'].sum()
+    roll_over = current_user.spendingAmount + recent_spending
+
+    print ("Roll Over: " + str(roll_over))
+
+    goals = Goal.query.filter_by(userId=userid)
+    total_goal_allocation = 0
+    for g in goals:
+        g.totalContribution += g.fortnightlyContribution
+        total_goal_allocation += g.fortnightlyContribution
+    
+    print ("Goal Allocation: " + str(total_goal_allocation))
+    
+    #current_user.periodStart = datetime.datetime.now()
+    #db.session.commit()
 
     return json.dumps({"status": 200, "message": "Success", "periodStart": current_user.periodStart.strftime("%d-%m-%Y")}, indent=5)
     
