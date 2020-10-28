@@ -202,7 +202,7 @@ def transaction_stats():
         spending[cat] = round(spend,2)
 
     #limit spending to most recent spending
-    recent_df =  df[df['date'] >= np.datetime64('now')- np.timedelta64(14,'D')]
+    recent_df =  df[df['date'] >= current_user.periodStart]
     recentSpending = {
         "total": recent_df[recent_df['value'] < 0]['value'].sum()
     }
@@ -239,6 +239,24 @@ def transaction_stats():
     }
 
     return data_dict
+
+@app.route("/start_period")
+@login_required
+def start_period():
+    """Start a new period
+
+    Sets User.periodStart to datetime.now()
+
+    Returns:
+    - Status message json
+    """
+
+    current_user.periodStart = datetime.datetime.now()
+
+    db.session.commit()
+
+    return json.dumps({"status": 200, "message": "Success", "periodStart": current_user.periodStart.strftime("%d-%m-%Y")}, indent=5)
+    
 
 #/set_goal?description=HOLIDAY&goalAmount=3000&endDate=01-01-2025
 @app.route("/set_goal")
@@ -716,6 +734,31 @@ def make_transaction():
                             date=datetime.datetime.now(), 
                             description=transName, 
                             value=-amount, 
+                            category="Uncategorized")
+    db.session.add(transaction)
+    db.session.commit()
+
+    return ""
+
+@app.route("/make_income", methods=["GET", "POST"])
+def make_income():
+    """Endpoint useful to the Demo """
+    if (not current_user.is_authenticated):
+        user = load_user("test")
+        login_user(user)
+
+    transName = request.values.get('name', type = str)
+    amount = request.values.get('amount', type = float)
+
+    TNAMES = ["WORK", "Transfer from XXXX XXXX", "REFUND FROM XXXX XXXX"]
+    transName = TNAMES[random.randint(0, 2)]
+    amount = random.random()*1000
+
+    transaction = Transaction(id=hash_string(transName + str(datetime.datetime.now())), 
+                            userId=current_user.id, 
+                            date=datetime.datetime.now(), 
+                            description=transName, 
+                            value=amount, 
                             category="Uncategorized")
     db.session.add(transaction)
     db.session.commit()
