@@ -111,7 +111,7 @@ def get_transactions():
             "description": row['description'],
             "value": row['value'],
             "category": row['category'],
-            "goal": None if math.isnan(row['goalId']) else row['goalId']
+            "goal": None if (row['goalId']==None) or (math.isnan(row['goalId'])) else row['goalId']
         }
         all_trans_list.append(transaction)
 
@@ -224,7 +224,7 @@ def transaction_stats():
     data_dict = {
         "total-assets": np.random.randint(7000,9000), # Future functionality
         "total-cash": round(total_money, 2),          # Future functionality
-        "spending-amount": current_user.spendingAmount + recentSpending["total"],
+        "spending-amount": current_user.spendingAmount,
         "days-till-pay": np.random.randint(1, 14),    # Future functionality
         "period-start": current_user.periodStart,
         "uncategorised": {
@@ -255,7 +255,8 @@ def start_period():
     """
 
     r = request.json
-    print (r['transactionIds'])
+    transactionIds = r['transactionIds']
+    print (transactionIds)
     userid = current_user.id
 
     # Access transaction table
@@ -263,12 +264,13 @@ def start_period():
     df = pd.read_sql(query.statement, query.session.bind)
 
     # Calculate roll over
-    recent_df = df[df['date'] >= current_user.periodStart]
+    recent_df = df[df['date'] > current_user.periodStart]
     recent_spending = recent_df[recent_df['value'] < 0]['value'].sum()
     roll_over = current_user.spendingAmount + recent_spending
 
     print ("Roll Over: " + str(roll_over))
 
+    # Get users goals
     goals = Goal.query.filter_by(userId=userid)
     total_goal_allocation = 0
     for g in goals:
@@ -277,8 +279,22 @@ def start_period():
     
     print ("Goal Allocation: " + str(total_goal_allocation))
     
-    #current_user.periodStart = datetime.datetime.now()
-    #db.session.commit()
+    # Process income transactions
+    total_income = 0
+    for tId in transactionIds:
+        t = Transaction.query.filter_by(id=int(tId)).first()
+        t.category = "Income"
+        total_income += t.value
+
+    print ("Total Income: " + str(total_income))
+
+    current_user.spendingAmount = total_income - total_goal_allocation + roll_over
+
+    print ("New spending amount: " + str(total_income - total_goal_allocation + roll_over))
+
+    # Set up new period and save changes
+    current_user.periodStart = datetime.datetime.now()
+    db.session.commit()
 
     return json.dumps({"status": 200, "message": "Success", "periodStart": current_user.periodStart.strftime("%d-%m-%Y")}, indent=5)
     
@@ -751,8 +767,8 @@ def make_transaction():
     amount = request.values.get('amount', type = float)
 
     TNAMES = ["VISA PURCHASE WOOLWORTHS LTD", "VISA PURCHASE STEAM", "VISA PURCHASE PAYPAL *ADOMESYSTEM", "EFTPOS PURCHASE COLES LTD"]
-    transName = TNAMES[random.randint(0, 3)]
-    amount = random.random()*100
+    transName = "DIEGO GENERAL STORE - MACBOOK PRO"#TNAMES[random.randint(0, 3)]
+    amount = 3989.99#random.random()*100
 
     transaction = Transaction(id=hash_string(transName + str(datetime.datetime.now())), 
                             userId=current_user.id, 
@@ -775,9 +791,9 @@ def make_income():
     transName = request.values.get('name', type = str)
     amount = request.values.get('amount', type = float)
 
-    TNAMES = ["WORK", "Transfer from XXXX XXXX", "REFUND FROM XXXX XXXX"]
-    transName = TNAMES[random.randint(0, 2)]
-    amount = random.random()*1000
+    TNAMES = ["PAY FROM XXXX XXXX - WORK", "Transfer from XXXX XXXX", "REFUND FROM XXXX XXXX"]
+    transName = TNAMES[0]#random.randint(0, 2)]
+    amount = 20000#random.random()*1000
 
     transaction = Transaction(id=hash_string(transName + str(datetime.datetime.now())), 
                             userId=current_user.id, 
