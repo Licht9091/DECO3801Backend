@@ -12,6 +12,7 @@ import datetime
 import os
 import hashlib
 import math
+import sqlalchemy
 
 """Handle annoying dates """
 date_handler = lambda obj: (
@@ -111,7 +112,7 @@ def get_transactions():
             "description": row['description'],
             "value": row['value'],
             "category": row['category'],
-            "goal": None if (row['goalId']==None) or (math.isnan(row['goalId'])) else row['goalId']
+            "goal": row['goalId']
         }
         all_trans_list.append(transaction)
 
@@ -148,7 +149,7 @@ def get_transactions():
     }
 
     #print (json.dumps(fin_dict , indent=5, default=date_handler))
-    return json.dumps(fin_dict , indent=5, default=date_handler)
+    return json.dumps(fin_dict , indent=5, default=date_handler).replace("NaN", "null")
 
 #/transaction_stats
 @app.route("/transaction_stats")
@@ -224,7 +225,7 @@ def transaction_stats():
     data_dict = {
         "total-assets": np.random.randint(7000,9000), # Future functionality
         "total-cash": round(total_money, 2),          # Future functionality
-        "spending-amount": current_user.spendingAmount,
+        "spending-amount": current_user.spendingAmount + recentSpending["total"],
         "days-till-pay": np.random.randint(1, 14),    # Future functionality
         "period-start": current_user.periodStart,
         "uncategorised": {
@@ -255,8 +256,7 @@ def start_period():
     """
 
     r = request.json
-    transactionIds = r['transactionIds']
-    print (transactionIds)
+    print (r['transactionIds'])
     userid = current_user.id
 
     # Access transaction table
@@ -264,13 +264,12 @@ def start_period():
     df = pd.read_sql(query.statement, query.session.bind)
 
     # Calculate roll over
-    recent_df = df[df['date'] > current_user.periodStart]
+    recent_df = df[df['date'] >= current_user.periodStart]
     recent_spending = recent_df[recent_df['value'] < 0]['value'].sum()
     roll_over = current_user.spendingAmount + recent_spending
 
     print ("Roll Over: " + str(roll_over))
 
-    # Get users goals
     goals = Goal.query.filter_by(userId=userid)
     total_goal_allocation = 0
     for g in goals:
@@ -279,20 +278,6 @@ def start_period():
     
     print ("Goal Allocation: " + str(total_goal_allocation))
     
-    # Process income transactions
-    total_income = 0
-    for tId in transactionIds:
-        t = Transaction.query.filter_by(id=int(tId)).first()
-        t.category = "Income"
-        total_income += t.value
-
-    print ("Total Income: " + str(total_income))
-
-    current_user.spendingAmount = total_income - total_goal_allocation + roll_over
-
-    print ("New spending amount: " + str(total_income - total_goal_allocation + roll_over))
-
-    # Set up new period and save changes
     current_user.periodStart = datetime.datetime.now()
     db.session.commit()
 
@@ -412,6 +397,15 @@ def delete_goal():
 
     #delete
     if (goal == None): return '{"message": "Goal was not found"}'
+
+    current_user.spendingAmount += goal.totalContribution
+
+    tcats = TransactionCategories.query.filter_by(goalId=goal.id).all()
+    transactions = Transaction.query.filter_by(goalId=goal.id).all()
+
+    for tcat in tcats: db.session.delete(tcat)
+    for transaction in transactions: transaction.goalId = None
+
     db.session.delete(goal)
     db.session.commit()
 
@@ -588,9 +582,12 @@ def allocate_transaction():
     try:
         #add a or multiple goals to a single transaction by adding a or multiple rows to transactioncatagories table
         for contribution in goals_arr:
+            print (str(transId) + " " + str(type(contribution[0])) + " " + str(type(contribution[1])))
             #print ("id: {} -> {}".format(type(contribution[0]), type(contribution[1])))
-            if type(contribution[0]) != int or type(contribution[1]) != float:
-                return json.dumps({"success": 400, "message": "Bad Request"}, indent=5)
+            if type(contribution[0]) != int:
+                return json.dumps({"success": 400, "message": "Bad goal ID"}, indent=5)
+            if not (type(contribution[1]) == float or type(contribution[1]) == int):
+                return json.dumps({"success": 400, "message": "Bad amount"}, indent=5)
 
             # Delete existing entries
             existingTransCategory = TransactionCategories.query.filter_by(transactionId=transId).first()
@@ -606,9 +603,20 @@ def allocate_transaction():
 
             if (trans == None): return json.dumps({"success": 400, "message": "Failed to find transaction"}, indent=5)
             if (goal == None): return json.dumps({"success": 400, "message": "Failed to find goal"}, indent=5)
-            trans.goalId = goal.id
+            
+            if (trans.goalId == goal.id):
+                # Uncategorise the goal
+                trans.goalId = sqlalchemy.sql.null()
+            else:
+                #Assign the goal id and add the transactionCategory
+                goalSpent = sum([t.value for t in Transaction.query.filter_by(goalId=goal.id).all()])
+                print (goal.totalContribution + goalSpent)
+                if (-trans.value > (goal.totalContribution + goalSpent)):
+                    db.session.commit()
+                    return json.dumps({"success": 500, "message": "Not saved enough"}, indent=5)
+                trans.goalId = goal.id
+                db.session.add(tcat)
 
-            db.session.add(tcat)
         db.session.commit()
         return json.dumps({"success": 200, "message": "Success"}, indent=5)
     except:
@@ -767,8 +775,8 @@ def make_transaction():
     amount = request.values.get('amount', type = float)
 
     TNAMES = ["VISA PURCHASE WOOLWORTHS LTD", "VISA PURCHASE STEAM", "VISA PURCHASE PAYPAL *ADOMESYSTEM", "EFTPOS PURCHASE COLES LTD"]
-    transName = "DIEGO GENERAL STORE - MACBOOK PRO"#TNAMES[random.randint(0, 3)]
-    amount = 3989.99#random.random()*100
+    transName = TNAMES[random.randint(0, 3)]
+    amount = random.random()*100
 
     transaction = Transaction(id=hash_string(transName + str(datetime.datetime.now())), 
                             userId=current_user.id, 
@@ -791,9 +799,9 @@ def make_income():
     transName = request.values.get('name', type = str)
     amount = request.values.get('amount', type = float)
 
-    TNAMES = ["PAY FROM XXXX XXXX - WORK", "Transfer from XXXX XXXX", "REFUND FROM XXXX XXXX"]
-    transName = TNAMES[0]#random.randint(0, 2)]
-    amount = 20000#random.random()*1000
+    TNAMES = ["WORK", "Transfer from XXXX XXXX", "REFUND FROM XXXX XXXX"]
+    transName = TNAMES[random.randint(0, 2)]
+    amount = random.random()*1000
 
     transaction = Transaction(id=hash_string(transName + str(datetime.datetime.now())), 
                             userId=current_user.id, 
